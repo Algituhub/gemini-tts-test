@@ -1,0 +1,2134 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Cloud Gemini-TTS 语音合成工作台</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef4ff',
+              100: '#d9e6ff',
+              400: '#609aff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.45);
+    }
+    input[type="range"] {
+      accent-color: #3b82f6;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-blue-500/30 selection:text-blue-200">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+          <i data-lucide="audio-waveform" class="w-5 h-5 text-white"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-base sm:text-lg tracking-tight text-white truncate">Google Cloud TTS Studio</h1>
+            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30">
+              Gemini 3.8 Flash TTS &amp; Cloud TTS
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 truncate">支持 JSON 服务账号密钥本地签名 · 随时随地自定义语气 Prompt 与多音色合成</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <!-- Key Status Pill -->
+        <button id="btnOpenKeyModal" type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all bg-slate-900 border-slate-700 hover:border-slate-600 text-slate-300">
+          <span id="authStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="authStatusText" class="truncate max-w-[140px] sm:max-w-[200px]">未导入 JSON 密钥</span>
+          <i data-lucide="key-round" class="w-3.5 h-3.5 text-slate-400"></i>
+        </button>
+
+        <!-- Payload Inspector Toggle -->
+        <button id="btnToggleInspector" type="button" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors" title="查看实时 API 请求 JSON 与代码">
+          <i data-lucide="code-2" class="w-3.5 h-3.5 text-blue-400"></i>
+          <span class="hidden md:inline">API 载荷</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Credentials + Voice & Model Selection (5 cols on lg) -->
+    <section class="lg:col-span-5 flex flex-col gap-5">
+
+      <!-- 1. Google Cloud JSON Key Card -->
+      <div class="rounded-2xl bg-slate-900/90 border border-slate-800/90 p-4 sm:p-5 shadow-xl">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-semibold text-white">Google Cloud 认证凭据</h2>
+              <p class="text-[11px] text-slate-400">纯浏览器端 WebCrypto RS256 签名换取 OAuth Token</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button id="btnPasteJsonModal" type="button" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors">
+              粘贴 JSON / Token
+            </button>
+            <button id="btnClearCredentials" type="button" class="hidden px-2 py-1 rounded-md text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-colors" title="清除已加载的密钥">
+              清除
+            </button>
+          </div>
+        </div>
+
+        <!-- Dropzone for Service Account JSON -->
+        <label id="jsonDropzone" for="jsonFileInput" class="group relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-700/80 hover:border-blue-500/70 rounded-xl bg-slate-950/60 hover:bg-blue-950/10 transition-all cursor-pointer text-center">
+          <input id="jsonFileInput" type="file" accept=".json,application/json" class="sr-only" />
+          <div class="w-9 h-9 rounded-full bg-slate-800/80 group-hover:bg-blue-500/20 flex items-center justify-center text-slate-300 group-hover:text-blue-400 transition-colors mb-2">
+            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+          </div>
+          <p class="text-xs font-medium text-slate-200 group-hover:text-white">
+            点击选择或拖拽导入 <span class="text-blue-400 font-mono">service-account.json</span> 密钥文件
+          </p>
+          <p class="text-[11px] text-slate-400 mt-0.5">
+            密钥仅在本地浏览器内存中通过 <code class="text-slate-300">crypto.subtle</code> 签名，绝不上传第三方服务器
+          </p>
+        </label>
+
+        <!-- Loaded Key Summary Panel (Hidden until loaded) -->
+        <div id="loadedKeySummary" class="hidden mt-3 pt-3 border-t border-slate-800/80 space-y-2 text-xs">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-slate-400">认证模式:</span>
+            <span id="credModeBadge" class="font-mono text-[11px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Service Account JSON</span>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-slate-400">Project ID:</span>
+            <span id="credProjectId" class="font-mono text-slate-200 truncate max-w-[220px]">-</span>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-slate-400">Client Email:</span>
+            <span id="credClientEmail" class="font-mono text-slate-300 truncate max-w-[220px]">-</span>
+          </div>
+          <div class="flex items-center justify-between gap-2 pt-1">
+            <div class="flex items-center gap-1.5">
+              <span class="text-slate-400">Access Token:</span>
+              <span id="tokenExpiryBadge" class="text-[11px] text-slate-400 font-mono">未获取</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <label class="inline-flex items-center gap-1 text-[11px] text-slate-400 cursor-pointer select-none">
+                <input id="chkRememberKey" type="checkbox" class="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-0" />
+                本地记住
+              </label>
+              <button id="btnRefreshToken" type="button" class="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-[11px] font-medium transition-colors">
+                <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                获取/刷新 Token
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Model & Endpoint Selector Card -->
+      <div class="rounded-2xl bg-slate-900/90 border border-slate-800/90 p-4 sm:p-5 shadow-xl space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <i data-lucide="cpu" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-semibold text-white">TTS 模型与区域端点</h2>
+              <p class="text-[11px] text-slate-400">Gemini-TTS 原生支持自然语言语气 Prompt 控制</p>
+            </div>
+          </div>
+          <a href="https://docs.cloud.google.com/text-to-speech/docs/gemini-tts" target="_blank" rel="noopener noreferrer" class="text-[11px] text-blue-400 hover:text-blue-300 inline-flex items-center gap-1">
+            官方文档 <i data-lucide="external-link" class="w-3 h-3"></i>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="selectModel" class="block text-xs font-medium text-slate-300 mb-1">合成模型 (modelName)</label>
+            <select id="selectModel" class="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-blue-500">
+              <option value="gemini-3.8-flash-tts" selected>gemini-3.8-flash-tts (最新旗舰 · 录音室级表现力)</option>
+              <option value="gemini-3.8-flash-lite-tts">gemini-3.8-flash-lite-tts (3.8 轻量高吞吐)</option>
+              <option value="gemini-2.5-flash-tts">gemini-2.5-flash-tts (Cloud TTS 低延迟)</option>
+              <option value="gemini-2.5-pro-tts">gemini-2.5-pro-tts (Cloud TTS 叙事)</option>
+              <option value="gemini-3.1-flash-tts-preview">gemini-3.1-flash-tts-preview (3.1 预览)</option>
+              <option value="gemini-2.5-flash-lite-preview-tts">gemini-2.5-flash-lite-preview-tts (2.5 轻量单人)</option>
+              <option value="standard-cloud-tts">Chirp 3 HD / Neural2 (传统语音模型)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="selectLanguage" class="block text-xs font-medium text-slate-300 mb-1">语言区域 (languageCode)</label>
+            <select id="selectLanguage" class="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-blue-500">
+              <option value="cmn-CN">cmn-CN (中文 · 普通话)</option>
+              <option value="en-US">en-US (英语 · 美国)</option>
+              <option value="cmn-TW">cmn-TW (中文 · 台湾)</option>
+              <option value="yue-HK">yue-HK (中文 · 粤语)</option>
+              <option value="ja-JP">ja-JP (日语 · 日本)</option>
+              <option value="ko-KR">ko-KR (韩语 · 韩国)</option>
+              <option value="en-GB">en-GB (英语 · 英国)</option>
+              <option value="es-ES">es-ES (西班牙语)</option>
+              <option value="fr-FR">fr-FR (法语)</option>
+              <option value="de-DE">de-DE (德语)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="selectEndpoint" class="block text-xs font-medium text-slate-300 mb-1">API 区域与端点</label>
+            <select id="selectEndpoint" class="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-blue-500 font-mono">
+              <option value="global">global (自动匹配 aiplatform / texttospeech)</option>
+              <option value="us">us (美国多区域端点)</option>
+              <option value="eu">eu (欧洲多区域端点)</option>
+              <option value="https://texttospeech.googleapis.com">强制 texttospeech.googleapis.com</option>
+              <option value="https://generativelanguage.googleapis.com">generativelanguage.googleapis.com (AI Studio)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="selectApiVersion" class="block text-xs font-medium text-slate-300 mb-1">REST 协议与版本</label>
+            <select id="selectApiVersion" class="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-blue-500 font-mono">
+              <option value="v1">v1 (GA 正式版 · 自动适配 3.8 / 2.5)</option>
+              <option value="v1beta1">v1beta1 (Preview 预览版协议)</option>
+              <option value="force-synthesize">强制 Cloud TTS text:synthesize 格式</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Voice Selector Library Card (30 Gemini Voices + Cloud Sync) -->
+      <div class="rounded-2xl bg-slate-900/90 border border-slate-800/90 p-4 sm:p-5 shadow-xl flex-1 flex flex-col min-h-[380px]">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <i data-lucide="mic" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-semibold text-white">声音库选择 (30 种官方 Gemini 音色)</h2>
+              <p class="text-[11px] text-slate-400">支持跨语言一致性发音，也可拉取账号下全部云端音色</p>
+            </div>
+          </div>
+
+          <button id="btnSyncCloudVoices" type="button" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors" title="调用 /v1/voices 同步云端音色列表">
+            <i data-lucide="cloud-download" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>同步云端列表</span>
+          </button>
+        </div>
+
+        <!-- Search & Gender Filter Bar -->
+        <div class="flex flex-col sm:flex-row gap-2 mb-3">
+          <div class="relative flex-1">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="inputVoiceSearch" type="text" placeholder="搜索声音名称或特质 (如 Aoede, 温暖, 活力, 沉稳)..." class="w-full rounded-lg bg-slate-950 border border-slate-800 pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500" />
+          </div>
+          <div class="flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 shrink-0">
+            <button type="button" data-gender-filter="ALL" class="voice-gender-btn px-2.5 py-1 rounded-md text-xs font-medium bg-blue-600 text-white transition-colors">全部</button>
+            <button type="button" data-gender-filter="FEMALE" class="voice-gender-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors">女声</button>
+            <button type="button" data-gender-filter="MALE" class="voice-gender-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors">男声</button>
+            <button type="button" data-gender-filter="FAV" class="voice-gender-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors">★ 收藏</button>
+          </div>
+        </div>
+
+        <!-- Currently Selected Voice Banner -->
+        <div class="mb-3 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-blue-500 text-white" id="selectedVoiceBadge">Aoede</span>
+            <span class="text-xs text-blue-200 truncate" id="selectedVoiceDesc">轻快自然 (Breezy · 女声)</span>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <input id="inputCustomVoiceName" type="text" placeholder="或手动输入 voice name" class="w-36 rounded bg-slate-950/90 border border-slate-700/80 px-2 py-1 text-[11px] font-mono text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-400" title="可直接输入如 cmn-CN-Chirp3-HD-Aoede 或自定义声音ID" />
+          </div>
+        </div>
+
+        <!-- Voice Cards Grid -->
+        <div id="voiceGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 overflow-y-auto custom-scrollbar pr-1 max-h-[280px] lg:max-h-[340px]">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Prompt Tone Studio + Script Input + Audio Player & History (7 cols on lg) -->
+    <section class="lg:col-span-7 flex flex-col gap-5">
+
+      <!-- 1. Prompt Tone & Style Control Card -->
+      <div class="rounded-2xl bg-slate-900/90 border border-slate-800/90 p-4 sm:p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-sm font-semibold text-white">语气与风格要求 Prompt (<code id="promptFieldCode" class="text-purple-300 font-mono text-xs">speech_metadata.style / input.prompt</code>)</h2>
+                <span id="promptSupportBadge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30">Gemini 3.8 Flash TTS 已启用</span>
+              </div>
+              <p class="text-[11px] text-slate-400">用自然语言描述说话人的情绪、身份、节奏、口音或场景氛围</p>
+            </div>
+          </div>
+
+          <button id="btnClearPrompt" type="button" class="text-xs text-slate-400 hover:text-slate-200 transition-colors">
+            清空语气
+          </button>
+        </div>
+
+        <!-- Quick Tone Preset Chips -->
+        <div class="mb-3">
+          <div class="text-[11px] text-slate-400 mb-1.5 flex items-center justify-between">
+            <span>一键语气预设 (点击填入，可随时自由修改):</span>
+            <span class="text-[11px] text-slate-500">支持中英文指令</span>
+          </div>
+          <div id="tonePresetsContainer" class="flex flex-wrap gap-1.5">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Tone Prompt Textarea -->
+        <div class="relative">
+          <textarea id="textareaPrompt" rows="2" placeholder="例如：请用温柔、治愈且充满耐心的深夜电台主持人语气朗读，语速微慢，带有温暖的微笑感..." class="w-full rounded-xl bg-slate-950 border border-slate-700/80 focus:border-purple-500 px-3.5 py-2.5 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none custom-scrollbar resize-y">请用温和、自然、富有亲和力的专业解说语气朗读，吐字清晰，节奏舒缓得当。</textarea>
+          <div class="flex items-center justify-between mt-1.5 text-[11px] text-slate-400">
+            <span>提示：越具体简洁的语气描述效果越佳（避免在同一条 Prompt 中混杂互相冲突的风格）</span>
+            <span id="promptCharCount" class="font-mono">36 字符</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Synthesis Text / Multi-Speaker Script Editor Card -->
+      <div class="rounded-2xl bg-slate-900/90 border border-slate-800/90 p-4 sm:p-5 shadow-xl flex flex-col">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-semibold text-white">合成文本内容 (<code class="text-emerald-300 font-mono text-xs">input.text</code>)</h2>
+              <p class="text-[11px] text-slate-400">支持单人旁白或双人对话合成，支持插入行内情绪动作标签</p>
+            </div>
+          </div>
+
+          <!-- Mode Switcher: Single vs Multi-Speaker vs SSML -->
+          <div class="flex rounded-lg bg-slate-950 p-0.5 border border-slate-800">
+            <button type="button" data-input-mode="single" class="input-mode-btn px-2.5 py-1 rounded-md text-xs font-medium bg-blue-600 text-white transition-colors">单人语音</button>
+            <button type="button" data-input-mode="dialogue" class="input-mode-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors">双人对话</button>
+            <button type="button" data-input-mode="ssml" class="input-mode-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors">SSML</button>
+          </div>
+        </div>
+
+        <!-- Inline Expressive Tag Insertion Bar -->
+        <div id="inlineTagsToolbar" class="mb-3 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] text-slate-400 flex items-center gap-1">
+              <i data-lucide="wand-2" class="w-3 h-3 text-amber-400"></i>
+              光标处插入行内语气/副语言标签 (Gemini-TTS 特性):
+            </span>
+            <button id="btnLoadSampleText" type="button" class="text-[11px] text-blue-400 hover:text-blue-300">
+              载入示例台词
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" data-insert-tag="<laugh> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 推荐尖括号标签">&lt;laugh&gt; 笑声(3.8)</button>
+            <button type="button" data-insert-tag="<sigh> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 推荐尖括号标签">&lt;sigh&gt; 叹气(3.8)</button>
+            <button type="button" data-insert-tag="<short pause> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 短停顿标签">&lt;short pause&gt; 停顿(3.8)</button>
+            <button type="button" data-insert-tag="<breath> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 呼吸声标签">&lt;breath&gt; 呼吸(3.8)</button>
+            <button type="button" data-insert-tag="<cough> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 轻咳标签">&lt;cough&gt; 轻咳(3.8)</button>
+            <button type="button" data-insert-tag="|mhm| " class="tag-insert-btn px-2 py-0.5 rounded bg-indigo-950/60 hover:bg-indigo-900/70 text-[11px] font-mono text-indigo-200 border border-indigo-500/40 transition-colors" title="Gemini 3.8 双人对话背景附和声">|mhm| 附和(3.8)</button>
+            <button type="button" data-insert-tag="[cheerful] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[cheerful] 欢快</button>
+            <button type="button" data-insert-tag="[whispering] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[whispering] 耳语</button>
+            <button type="button" data-insert-tag="[laughing] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[laughing] 笑声</button>
+            <button type="button" data-insert-tag="[sighs] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[sighs] 叹气</button>
+            <button type="button" data-insert-tag="[delighted] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[delighted] 欣喜</button>
+            <button type="button" data-insert-tag="[sad] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[sad] 悲伤</button>
+            <button type="button" data-insert-tag="[slow pace] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[slow pace] 慢速</button>
+            <button type="button" data-insert-tag="[fast pace] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[fast pace] 快速</button>
+            <button type="button" data-insert-tag="[coughs] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[coughs] 轻咳</button>
+          </div>
+        </div>
+
+        <!-- Single Speaker / SSML Textarea -->
+        <div id="singleTextContainer">
+          <textarea id="textareaText" rows="5" placeholder="在此输入需要转换为语音的文字内容..." class="w-full rounded-xl bg-slate-950 border border-slate-700/80 focus:border-blue-500 px-3.5 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none custom-scrollbar resize-y leading-relaxed">大家好！欢迎来到 Google Cloud Gemini-TTS 语音合成工作台。<short pause> 现在已全面支持最新的旗舰模型 gemini-3.8-flash-tts，<laugh> 你可以随时随地输入自然语言 Prompt 来控制我的语气、情绪和播讲节奏！</textarea>
+        </div>
+
+        <!-- Multi-Speaker Dialogue Editor (Hidden by default) -->
+        <div id="dialogueContainer" class="hidden space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <div>
+              <label for="selectSpeaker1Voice" class="block text-[11px] text-slate-400 mb-1">说话人 A (Speaker 1 音色)</label>
+              <select id="selectSpeaker1Voice" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100"></select>
+            </div>
+            <div>
+              <label for="selectSpeaker2Voice" class="block text-[11px] text-slate-400 mb-1">说话人 B (Speaker 2 音色)</label>
+              <select id="selectSpeaker2Voice" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100"></select>
+            </div>
+          </div>
+
+          <div id="dialogueTurnsList" class="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
+            <!-- Populated by JS -->
+          </div>
+
+          <button id="btnAddDialogueTurn" type="button" class="w-full py-1.5 rounded-lg border border-dashed border-slate-700 hover:border-blue-500 text-xs text-slate-300 hover:text-blue-300 transition-colors flex items-center justify-center gap-1">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> 添加一行对话台词
+          </button>
+        </div>
+
+        <!-- Audio Config Controls Row -->
+        <div class="mt-4 pt-3.5 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <label for="selectEncoding" class="text-slate-300 font-medium">输出编码格式</label>
+              <span class="text-[11px] text-slate-500 font-mono">audioEncoding</span>
+            </div>
+            <select id="selectEncoding" class="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-blue-500">
+              <option value="MP3">MP3 (通用兼容)</option>
+              <option value="LINEAR16">LINEAR16 (无损 WAV)</option>
+              <option value="OGG_OPUS">OGG_OPUS (高压缩流媒体)</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <label for="rangeSpeed" class="text-slate-300 font-medium">语速 (Speaking Rate)</label>
+              <span id="labelSpeedVal" class="text-xs font-mono text-blue-400">1.00x</span>
+            </div>
+            <input id="rangeSpeed" type="range" min="0.5" max="2.0" step="0.05" value="1.0" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer" />
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <label for="rangePitch" class="text-slate-300 font-medium">音高 (Pitch)</label>
+              <span id="labelPitchVal" class="text-xs font-mono text-blue-400">0.0 st</span>
+            </div>
+            <input id="rangePitch" type="range" min="-10" max="10" step="0.5" value="0.0" class="w-full h-2 bg-slate-800 rounded-lg cursor-pointer" />
+          </div>
+        </div>
+
+        <!-- Action Buttons Row -->
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button id="btnBrowserPreview" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors" title="无需密钥，使用浏览器内置语音快速试听文稿节奏">
+              <i data-lucide="volume-2" class="w-4 h-4 text-slate-300"></i>
+              <span>本地浏览器试听</span>
+            </button>
+            <span id="textCharCount" class="text-xs text-slate-400 font-mono">98 字符</span>
+          </div>
+
+          <button id="btnSynthesize" type="button" class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-600/25 transition-all active:scale-[0.99]">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span id="btnSynthesizeLabel">调用 Google Cloud TTS 合成语音</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Audio Output Player, Waveform Visualizer & History Queue -->
+      <div class="rounded-2xl bg-slate-900/90 border border-slate-800/90 p-4 sm:p-5 shadow-xl flex-1 flex flex-col gap-4">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <i data-lucide="headphones" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-semibold text-white">音频播放器与合成历史</h2>
+              <p id="currentAudioMeta" class="text-[11px] text-slate-400">合成后的音频将在此处展示实时频谱并支持一键下载</p>
+            </div>
+          </div>
+
+          <a id="btnDownloadAudio" href="#player" download="gemini-tts-audio.mp3" class="pointer-events-none opacity-40 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 transition-all">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>下载音频</span>
+          </a>
+        </div>
+
+        <!-- Waveform Canvas & Native Audio Controls -->
+        <div id="player" class="rounded-xl bg-slate-950 border border-slate-800/90 p-3 space-y-2.5">
+          <div class="relative h-20 w-full rounded-lg bg-slate-900/70 overflow-hidden flex items-center justify-center">
+            <canvas id="waveformCanvas" class="w-full h-full block"></canvas>
+            <div id="waveformPlaceholder" class="absolute inset-0 flex items-center justify-center text-xs text-slate-500 pointer-events-none">
+              等待合成音频输出或点击上方按钮生成...
+            </div>
+          </div>
+          <audio id="audioElement" controls class="w-full h-9"></audio>
+        </div>
+
+        <!-- Synthesis History List -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-slate-300">本次会话合成记录 (<span id="historyCount">0</span>)</span>
+            <button id="btnClearHistory" type="button" class="text-[11px] text-slate-400 hover:text-slate-200 transition-colors">清空记录</button>
+          </div>
+          <div id="historyList" class="space-y-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
+            <div class="text-xs text-slate-500 py-4 text-center border border-dashed border-slate-800 rounded-xl">
+              暂无合成记录。每次调整语气 Prompt 或更换声音生成的音频都会保存在这里方便对比。
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Modal 1: Paste Service Account JSON / Manual Token / Sample Guide -->
+  <div id="credentialModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="key-round" class="w-5 h-5 text-blue-400"></i>
+          <h3 class="text-base font-semibold text-white">导入 Google Cloud JSON 密钥或访问凭据</h3>
+        </div>
+        <button id="btnCloseCredentialModal" type="button" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Tabs -->
+      <div class="flex gap-2 border-b border-slate-800 pb-2 text-xs">
+        <button type="button" data-cred-tab="json" class="cred-tab-btn px-3 py-1.5 rounded-lg font-medium bg-blue-600 text-white">1. 粘贴服务账号 JSON 密钥 (推荐)</button>
+        <button type="button" data-cred-tab="token" class="cred-tab-btn px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-slate-200">2. 直接输入 Access Token / API Key</button>
+      </div>
+
+      <!-- Tab 1: Service Account JSON -->
+      <div id="credTabJson" class="space-y-3 overflow-y-auto custom-scrollbar pr-1">
+        <div class="p-3 rounded-xl bg-blue-950/30 border border-blue-500/20 text-xs text-blue-200 space-y-1">
+          <p class="font-medium">如何获取 Google Cloud 服务账号 JSON 密钥？</p>
+          <ol class="list-decimal list-inside text-[11px] text-blue-300/90 space-y-0.5">
+            <li>在 Google Cloud Console 中启用 <strong>Cloud Text-to-Speech API</strong>。</li>
+            <li>进入 <strong>IAM 与管理 &rarr; 服务账号 (Service Accounts)</strong>，创建或选择一个服务账号。</li>
+            <li>切换到 <strong>密钥 (Keys)</strong> 标签页 &rarr; 点击 <strong>添加密钥 &rarr; 创建新密钥 &rarr; 选择 JSON</strong> 下载。</li>
+            <li>将下载的 <code>.json</code> 文件拖拽到主界面，或将内容粘贴在下方文本框中。</li>
+          </ol>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label for="textareaServiceAccountJson" class="text-xs font-medium text-slate-300">服务账号 JSON 内容</label>
+            <button id="btnFillDemoJsonStructure" type="button" class="text-[11px] text-blue-400 hover:text-blue-300">填入格式示例模板</button>
+          </div>
+          <textarea id="textareaServiceAccountJson" rows="8" placeholder='{\n  "type": "service_account",\n  "project_id": "your-project-id",\n  "private_key_id": "...",\n  "private_key": "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n",\n  "client_email": "tts-client@your-project-id.iam.gserviceaccount.com",\n  "token_uri": "https://oauth2.googleapis.com/token"\n}' class="w-full rounded-xl bg-slate-950 border border-slate-700 p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500 custom-scrollbar"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button id="btnApplyServiceAccountJson" type="button" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+            验证并导入 JSON 密钥
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab 2: Direct Access Token or API Key -->
+      <div id="credTabToken" class="hidden space-y-3">
+        <p class="text-xs text-slate-400">
+          如果你已经通过 <code class="text-slate-200 font-mono">gcloud auth print-access-token</code> 获取了临时 Bearer Token，或者使用 Google Cloud API Key，也可以在此直接配置：
+        </p>
+        <div>
+          <label for="inputManualBearerToken" class="block text-xs font-medium text-slate-300 mb-1">OAuth 2.0 Access Token (<code class="font-mono">ya29...</code>)</label>
+          <input id="inputManualBearerToken" type="password" placeholder="粘贴 gcloud auth print-access-token 输出的令牌..." class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-blue-500" />
+        </div>
+        <div>
+          <label for="inputManualProjectId" class="block text-xs font-medium text-slate-300 mb-1">Google Cloud Project ID (用于 <code class="font-mono">x-goog-user-project</code> 请求头)</label>
+          <input id="inputManualProjectId" type="text" placeholder="例如 my-gcp-project-123" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-blue-500" />
+        </div>
+        <div class="pt-2 border-t border-slate-800">
+          <label for="inputManualApiKey" class="block text-xs font-medium text-slate-300 mb-1">或者使用 Google Cloud API Key (<code class="font-mono">AIza...</code>)</label>
+          <input id="inputManualApiKey" type="password" placeholder="粘贴已启用 Text-to-Speech API 的 API Key..." class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs font-mono text-slate-100 focus:outline-none focus:border-blue-500" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button id="btnApplyManualToken" type="button" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+            保存手动凭据
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Live Request Payload & Code Inspector -->
+  <div id="inspectorModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="terminal" class="w-5 h-5 text-blue-400"></i>
+          <h3 class="text-base font-semibold text-white">实时 Google Cloud TTS API 请求载荷与调用代码</h3>
+        </div>
+        <button id="btnCloseInspectorModal" type="button" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex gap-2 text-xs">
+          <button type="button" data-code-tab="json" class="code-tab-btn px-3 py-1 rounded-lg font-medium bg-blue-600 text-white">REST JSON 请求体</button>
+          <button type="button" data-code-tab="curl" class="code-tab-btn px-3 py-1 rounded-lg font-medium text-slate-400 hover:text-slate-200">cURL 命令</button>
+          <button type="button" data-code-tab="python" class="code-tab-btn px-3 py-1 rounded-lg font-medium text-slate-400 hover:text-slate-200">Python SDK 代码</button>
+        </div>
+        <button id="btnCopyInspectorCode" type="button" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          <span>复制代码</span>
+        </button>
+      </div>
+
+      <pre id="inspectorCodeBlock" class="flex-1 rounded-xl bg-slate-950 border border-slate-800 p-4 text-xs font-mono text-emerald-300 overflow-auto custom-scrollbar leading-relaxed"></pre>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <script>
+    // ============================================================================
+    // 1. Official 30 Gemini-TTS Prebuilt Voices & Tone Presets Data
+    // ============================================================================
+    const GEMINI_VOICES = [
+      { name: 'Aoede', gender: 'FEMALE', style: 'Breezy', zhDesc: '轻快自然 · 亲切女声', tag: '自然日常' },
+      { name: 'Kore', gender: 'FEMALE', style: 'Firm', zhDesc: '坚定沉稳 · 专业女声', tag: '新闻专业' },
+      { name: 'Puck', gender: 'MALE', style: 'Upbeat', zhDesc: '活力明快 · 阳光男声', tag: '热情活力' },
+      { name: 'Charon', gender: 'MALE', style: 'Informative', zhDesc: '知性博学 · 叙事男声', tag: '纪录解说' },
+      { name: 'Zephyr', gender: 'FEMALE', style: 'Bright', zhDesc: '明亮清澈 · 清晰女声', tag: '清亮引导' },
+      { name: 'Fenrir', gender: 'MALE', style: 'Excitable', zhDesc: '富有感染力 · 激昂男声', tag: '故事演说' },
+      { name: 'Leda', gender: 'FEMALE', style: 'Youthful', zhDesc: '青春甜美 · 灵动女声', tag: '青春活力' },
+      { name: 'Sulafat', gender: 'FEMALE', style: 'Warm', zhDesc: '温暖治愈 · 柔和女声', tag: '情感电台' },
+      { name: 'Orus', gender: 'MALE', style: 'Firm', zhDesc: '稳重可靠 · 商务男声', tag: '商务播报' },
+      { name: 'Callirrhoe', gender: 'FEMALE', style: 'Easy-going', zhDesc: '随和松弛 · 聊天女声', tag: '播客对谈' },
+      { name: 'Autonoe', gender: 'FEMALE', style: 'Bright', zhDesc: '明朗轻盈 · 欢快女声', tag: '轻快解说' },
+      { name: 'Enceladus', gender: 'MALE', style: 'Breathy', zhDesc: '磁性低语 · 感性男声', tag: '深夜电台' },
+      { name: 'Iapetus', gender: 'MALE', style: 'Clear', zhDesc: '字正腔圆 · 清朗男声', tag: '有声读物' },
+      { name: 'Umbriel', gender: 'MALE', style: 'Easy-going', zhDesc: '温和从容 · 随性男声', tag: '生活漫谈' },
+      { name: 'Algieba', gender: 'MALE', style: 'Smooth', zhDesc: '丝滑醇厚 · 质感男声', tag: '广告配音' },
+      { name: 'Despina', gender: 'FEMALE', style: 'Smooth', zhDesc: '柔顺细腻 · 优雅女声', tag: '优雅讲述' },
+      { name: 'Erinome', gender: 'FEMALE', style: 'Clear', zhDesc: '干净通透 · 知性女声', tag: '知识科普' },
+      { name: 'Algenib', gender: 'MALE', style: 'Gravelly', zhDesc: '沙哑沧桑 · 故事感男声', tag: '角色配音' },
+      { name: 'Rasalgethi', gender: 'MALE', style: 'Informative', zhDesc: '条理清晰 · 导师男声', tag: '课程培训' },
+      { name: 'Laomedeia', gender: 'FEMALE', style: 'Upbeat', zhDesc: '热情洋溢 · 元气女声', tag: '促销带货' },
+      { name: 'Achernar', gender: 'FEMALE', style: 'Soft', zhDesc: '轻柔温婉 · 安抚女声', tag: '冥想助眠' },
+      { name: 'Alnilam', gender: 'MALE', style: 'Firm', zhDesc: '刚毅果断 · 权威男声', tag: '发布会' },
+      { name: 'Schedar', gender: 'MALE', style: 'Even', zhDesc: '平和均衡 · 客观男声', tag: '新闻资讯' },
+      { name: 'Gacrux', gender: 'FEMALE', style: 'Mature', zhDesc: '成熟知性 · 稳重女声', tag: '纪录长片' },
+      { name: 'Pulcherrima', gender: 'FEMALE', style: 'Forward', zhDesc: '干练直接 · 现代女声', tag: '科技数码' },
+      { name: 'Achird', gender: 'MALE', style: 'Friendly', zhDesc: '友善亲切 · 邻家男声', tag: '客服引导' },
+      { name: 'Zubenelgenubi', gender: 'MALE', style: 'Casual', zhDesc: '轻松口语 · 闲聊男声', tag: 'VLOG旁白' },
+      { name: 'Vindemiatrix', gender: 'FEMALE', style: 'Gentle', zhDesc: '温文尔雅 · 轻柔女声', tag: '儿童绘本' },
+      { name: 'Sadachbia', gender: 'MALE', style: 'Lively', zhDesc: '生动活泼 · 趣味男声', tag: '动画解说' },
+      { name: 'Sadaltager', gender: 'MALE', style: 'Knowledgeable', zhDesc: '渊博深邃 · 学者男声', tag: '历史人文' }
+    ];
+
+    const TONE_PRESETS = [
+      { label: '🌙 深夜治愈电台', prompt: '请用温柔、治愈且充满耐心的深夜电台主播语气朗读，语速微慢，声音柔和温暖，带有浅浅的微笑感。' },
+      { label: '🎉 热情活力导游', prompt: 'Say the following as an enthusiastic, upbeat tour guide welcoming visitors, full of energy and excitement.' },
+      { label: '📺 沉稳新闻播报', prompt: '请用专业、客观、字正腔圆的新闻主播语气播报，节奏稳健，吐字清晰，权威可信。' },
+      { label: '🕵️ 悬疑低语故事', prompt: 'Speak in a hushed, mysterious, suspenseful storytelling tone, slightly whispering as if sharing a secret.' },
+      { label: '🎙️ 轻松播客闲聊', prompt: '请用像老朋友面对面喝咖啡聊天一样自然、松弛、口语化的播客语气说这段话，自然停顿。' },
+      { label: '🧸 欢快儿童绘本', prompt: '请用生动活泼、充满童趣和表现力的绘本故事老师语气朗读，语调起伏明显，温暖亲切。' },
+      { label: '💼 冷静科技发布会', prompt: '请用自信、从容、充满感染力的科技产品发布会主讲人语气演说，重点词汇适当放慢加重。' },
+      { label: '🧘 冥想放松引导', prompt: '请用极其轻柔、缓慢、平静安详的冥想引导师语气朗读，在句子之间留出舒缓的呼吸感。' },
+      { label: '😢 悲伤低沉倾诉', prompt: 'Say the following in a sad, melancholic, and quiet voice, with a slow and heavy pace.' },
+      { label: '😂 幽默风趣脱口秀', prompt: '请用带点调侃、诙谐幽默、节奏轻快的脱口秀演员语气说出这段话，充满表现力。' }
+    ];
+
+    const SAMPLE_TEXTS = [
+      {
+        mode: 'single',
+        prompt: '请用温柔、治愈且充满耐心的深夜电台主播语气朗读，语速微慢，带有温暖的微笑感。',
+        text: '夜深了，感谢你依然守候在收音机前。[sighs] 无论今天经历了多少奔波与忙碌，都请在这一刻放下疲惫，深呼吸，祝你今晚有一个好梦。'
+      },
+      {
+        mode: 'single',
+        prompt: 'Say the following as an enthusiastic, upbeat tour guide welcoming visitors, full of excitement.',
+        text: '[cheerful] 各位游客朋友们大家好！欢迎来到我们今天的奇幻之旅！[delighted] 请往左手边看，那座闪耀着金色光芒的建筑就是我们今天的第一站！'
+      },
+      {
+        mode: 'dialogue',
+        prompt: 'Two podcast hosts having a lively, warm, and natural conversation about AI voice synthesis.',
+        turns: [
+          { speaker: 'R', text: '嘿！你试过 Google Cloud 最新的 Gemini-TTS 语音合成了吗？可以直接用自然语言控制语气！' },
+          { speaker: 'S', text: '[delighted] 试过了！最厉害的是它支持直接在浏览器里导入服务账号 JSON 密钥，随时随地切换三十多种音色。' },
+          { speaker: 'R', text: '没错，不管是做播客、有声书还是多语种配音，表现力都太自然了！' }
+        ]
+      }
+    ];
+
+    // ============================================================================
+    // 2. Application State
+    // ============================================================================
+    const state = {
+      // Credentials
+      credType: 'none', // 'service_account' | 'bearer' | 'apikey' | 'none'
+      serviceAccount: null, // parsed JSON object
+      accessToken: '',
+      tokenExpiresAt: 0,
+      manualProjectId: '',
+      apiKey: '',
+
+      // Voice & Model
+      selectedVoice: 'Aoede',
+      customVoiceName: '',
+      genderFilter: 'ALL',
+      voiceSearch: '',
+      favorites: new Set(['Aoede', 'Kore', 'Puck', 'Charon', 'Sulafat']),
+      voicesList: [...GEMINI_VOICES],
+
+      // Input & Mode
+      inputMode: 'single', // 'single' | 'dialogue' | 'ssml'
+      speaker1Voice: 'Aoede',
+      speaker2Voice: 'Puck',
+      dialogueTurns: [
+        { speaker: 'R', text: '你好！今天我们来测试一下双人对话语音合成。' },
+        { speaker: 'S', text: '太棒了！通过设置语气 Prompt，我们的对话听起来就像真人播客一样自然。' }
+      ],
+
+      // Inspector & History
+      activeCodeTab: 'json',
+      activeCredTab: 'json',
+      sampleIndex: 0,
+      history: []
+    };
+
+    // ============================================================================
+    // 3. Utility & Toast Functions
+    // ============================================================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const colorMap = {
+        success: 'bg-emerald-950/95 border-emerald-500/40 text-emerald-200',
+        error: 'bg-rose-950/95 border-rose-500/40 text-rose-200',
+        warning: 'bg-amber-950/95 border-amber-500/40 text-amber-200',
+        info: 'bg-slate-900/95 border-blue-500/40 text-slate-100'
+      };
+      toast.className = `pointer-events-auto flex items-start gap-2.5 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-md text-xs transition-all duration-300 ${colorMap[type] || colorMap.info}`;
+      toast.innerHTML = `
+        <span class="font-medium leading-relaxed flex-1">${escapeHtml(message)}</span>
+        <button type="button" class="text-slate-400 hover:text-white shrink-0">&times;</button>
+      `;
+      toast.querySelector('button').addEventListener('click', () => toast.remove());
+      container.appendChild(toast);
+      setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+      }, 4500);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function copyTextToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('已复制到剪贴板', 'success');
+        }).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('已复制到剪贴板', 'success');
+      } catch (e) {
+        showToast('复制失败，请手动选择复制', 'error');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // ============================================================================
+    // 4. Web Crypto API RS256 JWT Signing & OAuth2 Token Exchange
+    // ============================================================================
+    function base64UrlEncodeString(str) {
+      const bytes = new TextEncoder().encode(str);
+      return base64UrlEncodeBytes(bytes);
+    }
+
+    function base64UrlEncodeBytes(bytes) {
+      let binary = '';
+      const arr = new Uint8Array(bytes);
+      for (let i = 0; i < arr.byteLength; i++) {
+        binary += String.fromCharCode(arr[i]);
+      }
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function pemToArrayBuffer(pem) {
+      const b64Lines = pem
+        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+        .replace(/-----END PRIVATE KEY-----/g, '')
+        .replace(/\s+/g, '');
+      const binaryStr = atob(b64Lines);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    async function generateServiceAccountAccessToken(sa) {
+      if (!sa || !sa.private_key || !sa.client_email) {
+        throw new Error('JSON 密钥缺少 private_key 或 client_email 字段');
+      }
+      const tokenUri = sa.token_uri || 'https://oauth2.googleapis.com/token';
+      const now = Math.floor(Date.now() / 1000);
+
+      const header = {
+        alg: 'RS256',
+        typ: 'JWT'
+      };
+      if (sa.private_key_id) {
+        header.kid = sa.private_key_id;
+      }
+
+      const payload = {
+        iss: sa.client_email,
+        sub: sa.client_email,
+        aud: tokenUri,
+        iat: now,
+        exp: now + 3600,
+        scope: 'https://www.googleapis.com/auth/cloud-platform'
+      };
+
+      const encodedHeader = base64UrlEncodeString(JSON.stringify(header));
+      const encodedPayload = base64UrlEncodeString(JSON.stringify(payload));
+      const signingInput = `${encodedHeader}.${encodedPayload}`;
+
+      const keyBuffer = pemToArrayBuffer(sa.private_key);
+      const cryptoKey = await window.crypto.subtle.importKey(
+        'pkcs8',
+        keyBuffer,
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          hash: { name: 'SHA-256' }
+        },
+        false,
+        ['sign']
+      );
+
+      const signatureBuffer = await window.crypto.subtle.sign(
+        'RSASSA-PKCS1-v1_5',
+        cryptoKey,
+        new TextEncoder().encode(signingInput)
+      );
+
+      const encodedSignature = base64UrlEncodeBytes(signatureBuffer);
+      const jwtAssertion = `${signingInput}.${encodedSignature}`;
+
+      const response = await fetch(tokenUri, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+          assertion: jwtAssertion
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.access_token) {
+        throw new Error(data.error_description || data.error || '换取 OAuth Access Token 失败');
+      }
+
+      state.accessToken = data.access_token;
+      state.tokenExpiresAt = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+      updateCredentialUI();
+      return state.accessToken;
+    }
+
+    async function ensureValidAccessToken() {
+      if (state.credType === 'apikey') {
+        return null; // Handled via ?key= query parameter
+      }
+      if (state.credType === 'bearer') {
+        if (!state.accessToken) throw new Error('Access Token 为空');
+        return state.accessToken;
+      }
+      if (state.credType === 'service_account') {
+        if (state.accessToken && Date.now() < state.tokenExpiresAt) {
+          return state.accessToken;
+        }
+        return await generateServiceAccountAccessToken(state.serviceAccount);
+      }
+      throw new Error('请先导入 Google Cloud 服务账号 JSON 密钥或配置 Access Token');
+    }
+
+    // ============================================================================
+    // 5. Credential Import & UI Management
+    // ============================================================================
+    function handleServiceAccountJsonString(rawText, saveToStorage = false) {
+      let parsed;
+      try {
+        parsed = JSON.parse(rawText.trim());
+      } catch (err) {
+        showToast('JSON 格式解析失败，请检查文件是否为有效的 JSON', 'error');
+        return false;
+      }
+
+      if (!parsed.private_key || !parsed.client_email) {
+        showToast('该 JSON 不包含有效的服务账号字段 (需包含 private_key 与 client_email)', 'error');
+        return false;
+      }
+
+      state.credType = 'service_account';
+      state.serviceAccount = parsed;
+      state.accessToken = '';
+      state.tokenExpiresAt = 0;
+
+      if (saveToStorage || document.getElementById('chkRememberKey').checked) {
+        try {
+          localStorage.setItem('gcp_tts_sa_json', JSON.stringify(parsed));
+        } catch (e) {
+          // Ignore storage errors in sandboxed iframes
+        }
+      }
+
+      updateCredentialUI();
+      showToast(`已成功加载服务账号密钥：${parsed.project_id || parsed.client_email}`, 'success');
+
+      // Immediately exchange token so user sees instant readiness
+      generateServiceAccountAccessToken(parsed)
+        .then(() => {
+          showToast('OAuth 2.0 Access Token 签名换取成功，随时可以合成语音！', 'success');
+        })
+        .catch((err) => {
+          showToast(`本地密钥已载入，换取 Token 提示: ${err.message}`, 'warning');
+        });
+
+      return true;
+    }
+
+    function updateCredentialUI() {
+      const dot = document.getElementById('authStatusDot');
+      const text = document.getElementById('authStatusText');
+      const summary = document.getElementById('loadedKeySummary');
+      const clearBtn = document.getElementById('btnClearCredentials');
+      const modeBadge = document.getElementById('credModeBadge');
+      const projEl = document.getElementById('credProjectId');
+      const emailEl = document.getElementById('credClientEmail');
+      const expiryBadge = document.getElementById('tokenExpiryBadge');
+
+      if (state.credType === 'none') {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+        text.textContent = '未导入 JSON 密钥';
+        summary.classList.add('hidden');
+        clearBtn.classList.add('hidden');
+        return;
+      }
+
+      summary.classList.remove('hidden');
+      clearBtn.classList.remove('hidden');
+
+      if (state.credType === 'service_account' && state.serviceAccount) {
+        const hasToken = Boolean(state.accessToken && Date.now() < state.tokenExpiresAt);
+        dot.className = `w-2 h-2 rounded-full ${hasToken ? 'bg-emerald-400' : 'bg-blue-400'}`;
+        text.textContent = state.serviceAccount.project_id || state.serviceAccount.client_email;
+        modeBadge.textContent = 'Service Account JSON';
+        projEl.textContent = state.serviceAccount.project_id || '未指定';
+        emailEl.textContent = state.serviceAccount.client_email;
+        if (hasToken) {
+          const mins = Math.max(1, Math.round((state.tokenExpiresAt - Date.now()) / 60000));
+          expiryBadge.textContent = `有效 (约剩 ${mins} 分钟)`;
+          expiryBadge.className = 'text-[11px] text-emerald-400 font-mono';
+        } else {
+          expiryBadge.textContent = '待签发 / 点击右侧刷新';
+          expiryBadge.className = 'text-[11px] text-amber-300 font-mono';
+        }
+      } else if (state.credType === 'bearer') {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        text.textContent = state.manualProjectId ? `Bearer (${state.manualProjectId})` : 'Bearer Token 已配置';
+        modeBadge.textContent = 'OAuth Bearer Token';
+        projEl.textContent = state.manualProjectId || '默认配额项目';
+        emailEl.textContent = '手动输入 Access Token';
+        expiryBadge.textContent = '已手动配置';
+        expiryBadge.className = 'text-[11px] text-emerald-400 font-mono';
+      } else if (state.credType === 'apikey') {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        text.textContent = 'API Key 已配置';
+        modeBadge.textContent = 'Google Cloud API Key';
+        projEl.textContent = state.manualProjectId || 'API Key 绑定项目';
+        emailEl.textContent = 'API Key 模式';
+        expiryBadge.textContent = '长期有效';
+        expiryBadge.className = 'text-[11px] text-emerald-400 font-mono';
+      }
+    }
+
+    // ============================================================================
+    // 6. Render Voices, Tone Presets & Dialogue Turns
+    // ============================================================================
+    function renderTonePresets() {
+      const container = document.getElementById('tonePresetsContainer');
+      container.innerHTML = '';
+      TONE_PRESETS.forEach((preset) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'px-2.5 py-1 rounded-lg text-xs bg-slate-950 hover:bg-purple-500/20 text-slate-300 hover:text-purple-200 border border-slate-800 hover:border-purple-500/40 transition-all';
+        btn.textContent = preset.label;
+        btn.addEventListener('click', () => {
+          const ta = document.getElementById('textareaPrompt');
+          ta.value = preset.prompt;
+          updateCharCounts();
+          showToast(`已应用「${preset.label}」语气要求`, 'info');
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function renderVoicesGrid() {
+      const grid = document.getElementById('voiceGrid');
+      grid.innerHTML = '';
+      const q = state.voiceSearch.trim().toLowerCase();
+
+      const filtered = state.voicesList.filter((v) => {
+        if (state.genderFilter === 'FEMALE' && v.gender !== 'FEMALE') return false;
+        if (state.genderFilter === 'MALE' && v.gender !== 'MALE') return false;
+        if (state.genderFilter === 'FAV' && !state.favorites.has(v.name)) return false;
+        if (!q) return true;
+        return (
+          v.name.toLowerCase().includes(q) ||
+          (v.style && v.style.toLowerCase().includes(q)) ||
+          (v.zhDesc && v.zhDesc.toLowerCase().includes(q)) ||
+          (v.tag && v.tag.toLowerCase().includes(q))
+        );
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="col-span-full py-8 text-center text-xs text-slate-500">没有找到匹配的音色，请尝试其他关键词</div>`;
+        return;
+      }
+
+      filtered.forEach((v) => {
+        const isSelected = state.selectedVoice === v.name && !state.customVoiceName;
+        const isFav = state.favorites.has(v.name);
+        const card = document.createElement('div');
+        card.className = `group relative rounded-xl p-2.5 border transition-all cursor-pointer select-none flex flex-col justify-between ${
+          isSelected
+            ? 'bg-blue-600/20 border-blue-500 shadow-md shadow-blue-500/10'
+            : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900'
+        }`;
+
+        const genderBadge = v.gender === 'FEMALE'
+          ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-pink-500/15 text-pink-300">♀ 女</span>'
+          : '<span class="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300">♂ 男</span>';
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-1 mb-1">
+              <span class="font-mono text-xs font-semibold ${isSelected ? 'text-blue-300' : 'text-slate-100'} truncate">${escapeHtml(v.name)}</span>
+              <div class="flex items-center gap-1 shrink-0">
+                ${genderBadge}
+                <button type="button" data-fav-btn="${escapeHtml(v.name)}" class="text-xs px-1 ${isFav ? 'text-amber-400' : 'text-slate-600 hover:text-slate-400'}" title="收藏该音色">★</button>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 truncate">${escapeHtml(v.zhDesc || v.style || '')}</p>
+          </div>
+          <div class="mt-2 flex items-center justify-between">
+            <span class="text-[10px] text-slate-500 font-mono">${escapeHtml(v.style || 'Cloud')}</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">${escapeHtml(v.tag || '多语种')}</span>
+          </div>
+        `;
+
+        card.addEventListener('click', (e) => {
+          const favBtn = e.target.closest('[data-fav-btn]');
+          if (favBtn) {
+            e.stopPropagation();
+            const vName = favBtn.getAttribute('data-fav-btn');
+            if (state.favorites.has(vName)) {
+              state.favorites.delete(vName);
+            } else {
+              state.favorites.add(vName);
+            }
+            renderVoicesGrid();
+            return;
+          }
+          state.selectedVoice = v.name;
+          state.customVoiceName = '';
+          document.getElementById('inputCustomVoiceName').value = '';
+          updateSelectedVoiceBanner();
+          renderVoicesGrid();
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    function updateSelectedVoiceBanner() {
+      const badge = document.getElementById('selectedVoiceBadge');
+      const desc = document.getElementById('selectedVoiceDesc');
+      const effectiveVoice = state.customVoiceName || state.selectedVoice;
+      badge.textContent = effectiveVoice;
+      const found = state.voicesList.find((v) => v.name === effectiveVoice);
+      if (found) {
+        desc.textContent = `${found.zhDesc} (${found.style})`;
+      } else {
+        desc.textContent = '自定义 / 云端特定音色标识符';
+      }
+    }
+
+    function populateDialogueSpeakerSelects() {
+      const s1 = document.getElementById('selectSpeaker1Voice');
+      const s2 = document.getElementById('selectSpeaker2Voice');
+      s1.innerHTML = '';
+      s2.innerHTML = '';
+      GEMINI_VOICES.forEach((v) => {
+        const opt1 = document.createElement('option');
+        opt1.value = v.name;
+        opt1.textContent = `${v.name} (${v.zhDesc})`;
+        if (v.name === state.speaker1Voice) opt1.selected = true;
+        s1.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = v.name;
+        opt2.textContent = `${v.name} (${v.zhDesc})`;
+        if (v.name === state.speaker2Voice) opt2.selected = true;
+        s2.appendChild(opt2);
+      });
+    }
+
+    function renderDialogueTurns() {
+      const list = document.getElementById('dialogueTurnsList');
+      list.innerHTML = '';
+      state.dialogueTurns.forEach((turn, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-start gap-2 bg-slate-950/90 border border-slate-800 rounded-xl p-2';
+        row.innerHTML = `
+          <button type="button" data-toggle-speaker="${idx}" class="px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold shrink-0 transition-colors ${
+            turn.speaker === 'R'
+              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+              : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+          }" title="点击切换说话人 A / B">
+            ${turn.speaker === 'R' ? '说话人 A (R)' : '说话人 B (S)'}
+          </button>
+          <input type="text" data-turn-input="${idx}" value="${escapeHtml(turn.text)}" placeholder="输入该角色的台词..." class="flex-1 bg-transparent text-xs sm:text-sm text-slate-100 focus:outline-none py-1" />
+          <button type="button" data-remove-turn="${idx}" class="text-slate-500 hover:text-rose-400 p-1" title="删除此行">
+            &times;
+          </button>
+        `;
+        list.appendChild(row);
+      });
+
+      list.querySelectorAll('[data-toggle-speaker]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.getAttribute('data-toggle-speaker'));
+          state.dialogueTurns[i].speaker = state.dialogueTurns[i].speaker === 'R' ? 'S' : 'R';
+          renderDialogueTurns();
+        });
+      });
+
+      list.querySelectorAll('[data-turn-input]').forEach((inp) => {
+        inp.addEventListener('input', () => {
+          const i = Number(inp.getAttribute('data-turn-input'));
+          state.dialogueTurns[i].text = inp.value;
+          updateCharCounts();
+        });
+      });
+
+      list.querySelectorAll('[data-remove-turn]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (state.dialogueTurns.length <= 1) {
+            showToast('至少保留一行对话', 'warning');
+            return;
+          }
+          const i = Number(btn.getAttribute('data-remove-turn'));
+          state.dialogueTurns.splice(i, 1);
+          renderDialogueTurns();
+          updateCharCounts();
+        });
+      });
+    }
+
+    // ============================================================================
+    // 7. Build Google Cloud TTS Request Payload & Code Generator (3.8 & 2.5/3.1)
+    // ============================================================================
+    function isGemini38Model(model) {
+      return model === 'gemini-3.8-flash-tts' || model === 'gemini-3.8-flash-lite-tts';
+    }
+
+    function useGenerateContentProtocol() {
+      const model = document.getElementById('selectModel').value;
+      const endpointSel = document.getElementById('selectEndpoint').value;
+      const versionSel = document.getElementById('selectApiVersion').value;
+      if (versionSel === 'force-synthesize' || endpointSel === 'https://texttospeech.googleapis.com') {
+        return false;
+      }
+      return isGemini38Model(model);
+    }
+
+    function normalizeGemini38Transcript(rawText) {
+      return String(rawText || '')
+        .replace(/\[laughing\]/gi, '<laugh>')
+        .replace(/\[sighs\]/gi, '<sigh>')
+        .replace(/\[coughs\]/gi, '<cough>');
+    }
+
+    function resolveTargetEndpointUrl() {
+      const model = document.getElementById('selectModel').value;
+      const endpointSel = document.getElementById('selectEndpoint').value;
+      const versionSel = document.getElementById('selectApiVersion').value;
+      const apiVer = versionSel === 'v1beta1' ? 'v1beta1' : 'v1';
+      const projectId = (state.serviceAccount && state.serviceAccount.project_id) || state.manualProjectId || 'YOUR_PROJECT_ID';
+
+      if (useGenerateContentProtocol()) {
+        if (endpointSel === 'https://generativelanguage.googleapis.com' || (state.credType === 'apikey' && !state.manualProjectId)) {
+          return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+        }
+        const loc = (endpointSel === 'us' || endpointSel === 'eu') ? endpointSel : 'global';
+        const hostPrefix = (loc === 'us' || loc === 'eu') ? `${loc}-` : '';
+        return `https://${hostPrefix}aiplatform.googleapis.com/${apiVer}/projects/${projectId}/locations/${loc}/publishers/google/models/${model}:generateContent`;
+      }
+
+      let ttsBase = 'https://texttospeech.googleapis.com';
+      if (endpointSel === 'us') ttsBase = 'https://us-texttospeech.googleapis.com';
+      else if (endpointSel === 'eu') ttsBase = 'https://eu-texttospeech.googleapis.com';
+      else if (endpointSel.startsWith('https://')) ttsBase = endpointSel;
+      return `${ttsBase}/${apiVer}/text:synthesize`;
+    }
+
+    function buildSynthesizePayload() {
+      const model = document.getElementById('selectModel').value;
+      const languageCode = document.getElementById('selectLanguage').value;
+      const encoding = document.getElementById('selectEncoding').value;
+      const speakingRate = parseFloat(document.getElementById('rangeSpeed').value);
+      const pitch = parseFloat(document.getElementById('rangePitch').value);
+      const promptText = document.getElementById('textareaPrompt').value.trim();
+      const mainText = document.getElementById('textareaText').value;
+      const voiceName = (state.customVoiceName || state.selectedVoice).trim();
+
+      // Official Gemini 3.8 generateContent schema (speech_metadata.style + speechConfig)
+      if (useGenerateContentProtocol()) {
+        const parts = [];
+        if (state.inputMode === 'dialogue') {
+          state.dialogueTurns.forEach((t) => {
+            const meta = { speaker: t.speaker };
+            if (promptText) meta.style = promptText;
+            parts.push({
+              text: normalizeGemini38Transcript(t.text),
+              speech_metadata: meta
+            });
+          });
+        } else {
+          const partObj = {
+            text: normalizeGemini38Transcript(mainText)
+          };
+          if (promptText) {
+            partObj.speech_metadata = { style: promptText };
+          }
+          parts.push(partObj);
+        }
+
+        const speechConfig = {
+          languageCode: languageCode
+        };
+        if (state.inputMode === 'dialogue') {
+          speechConfig.multiSpeakerVoiceConfig = {
+            speakerVoiceConfigs: [
+              {
+                speaker: 'R',
+                voiceConfig: { voice: document.getElementById('selectSpeaker1Voice').value }
+              },
+              {
+                speaker: 'S',
+                voiceConfig: { voice: document.getElementById('selectSpeaker2Voice').value }
+              }
+            ]
+          };
+        } else {
+          speechConfig.voiceConfig = {
+            voice: voiceName
+          };
+        }
+
+        return {
+          contents: [
+            {
+              role: 'user',
+              parts: parts
+            }
+          ],
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: speechConfig
+          }
+        };
+      }
+
+      // Cloud Text-to-Speech API (text:synthesize) schema
+      const isGeminiModel = model !== 'standard-cloud-tts';
+
+      const inputObj = {};
+      if (state.inputMode === 'dialogue' && isGeminiModel) {
+        inputObj.multiSpeakerMarkup = {
+          turns: state.dialogueTurns.map((t) => ({
+            speaker: t.speaker,
+            text: t.text
+          }))
+        };
+        if (promptText) {
+          inputObj.prompt = promptText;
+        }
+      } else if (state.inputMode === 'ssml') {
+        inputObj.ssml = mainText.trim().startsWith('<speak>')
+          ? mainText.trim()
+          : `<speak>${mainText}</speak>`;
+      } else {
+        inputObj.text = mainText;
+        if (isGeminiModel && promptText) {
+          inputObj.prompt = promptText;
+        }
+      }
+
+      const voiceObj = {
+        languageCode: languageCode
+      };
+
+      if (state.inputMode === 'dialogue' && isGeminiModel) {
+        voiceObj.modelName = model;
+        voiceObj.multiSpeakerVoiceConfig = {
+          speakerVoiceConfigs: [
+            { speakerAlias: 'R', speakerId: document.getElementById('selectSpeaker1Voice').value },
+            { speakerAlias: 'S', speakerId: document.getElementById('selectSpeaker2Voice').value }
+          ]
+        };
+      } else if (isGeminiModel) {
+        voiceObj.name = voiceName;
+        voiceObj.modelName = model;
+      } else {
+        voiceObj.name = voiceName.includes('-')
+          ? voiceName
+          : `${languageCode}-Chirp3-HD-${voiceName}`;
+      }
+
+      const audioConfig = {
+        audioEncoding: encoding
+      };
+      if (speakingRate !== 1.0) {
+        audioConfig.speakingRate = speakingRate;
+      }
+      if (pitch !== 0.0 && !isGeminiModel) {
+        audioConfig.pitch = pitch;
+      }
+
+      return {
+        input: inputObj,
+        voice: voiceObj,
+        audioConfig: audioConfig
+      };
+    }
+
+    function updateInspectorCode() {
+      const payload = buildSynthesizePayload();
+      const model = document.getElementById('selectModel').value;
+      const url = resolveTargetEndpointUrl();
+      const projectId = (state.serviceAccount && state.serviceAccount.project_id) || state.manualProjectId || 'YOUR_PROJECT_ID';
+      const block = document.getElementById('inspectorCodeBlock');
+      const isGenContent = useGenerateContentProtocol();
+
+      if (state.activeCodeTab === 'json') {
+        block.textContent = JSON.stringify(payload, null, 2);
+      } else if (state.activeCodeTab === 'curl') {
+        block.textContent = [
+          `curl -X POST "${url}" \\`,
+          `  -H "Authorization: Bearer $(gcloud auth print-access-token)" \\`,
+          `  -H "x-goog-user-project: ${projectId}" \\`,
+          `  -H "Content-Type: application/json; charset=utf-8" \\`,
+          `  -d '${JSON.stringify(payload, null, 2)}'`
+        ].join('\n');
+      } else if (state.activeCodeTab === 'python') {
+        if (isGenContent) {
+          const voiceName = (state.customVoiceName || state.selectedVoice).trim();
+          const promptText = document.getElementById('textareaPrompt').value.trim();
+          const mainText = normalizeGemini38Transcript(document.getElementById('textareaText').value);
+          block.textContent = [
+            `from google import genai`,
+            `from google.oauth2 import service_account`,
+            ``,
+            `# 1. 加载服务账号 JSON 密钥并初始化 Gemini Enterprise (Vertex AI) 客户端`,
+            `credentials = service_account.Credentials.from_service_account_file(`,
+            `    "service-account.json",`,
+            `    scopes=["https://www.googleapis.com/auth/cloud-platform"]`,
+            `)`,
+            `client = genai.Client(`,
+            `    vertexai=True,`,
+            `    project=${JSON.stringify(projectId)},`,
+            `    location="global",`,
+            `    credentials=credentials`,
+            `)`,
+            ``,
+            `# 2. 调用 ${model} (通过 speech_metadata.style 控制语气，支持 <laugh> / <short pause> 标签)`,
+            `response = client.models.generate_content(`,
+            `    model=${JSON.stringify(model)},`,
+            `    contents=[{`,
+            `        "role": "user",`,
+            `        "parts": [{`,
+            `            "text": ${JSON.stringify(mainText)},`,
+            `            "speech_metadata": {"style": ${JSON.stringify(promptText)}}`,
+            `        }]`,
+            `    }],`,
+            `    config={`,
+            `        "response_modalities": ["AUDIO"],`,
+            `        "speech_config": {`,
+            `            "language_code": ${JSON.stringify(document.getElementById('selectLanguage').value)},`,
+            `            "voice_config": {"voice": ${JSON.stringify(voiceName)}}`,
+            `        }`,
+            `    }`,
+            `)`,
+            ``,
+            `# 3. Gemini 3.8 默认返回完整 WAV 音频字节`,
+            `audio_bytes = response.candidates[0].content.parts[0].inline_data.data`,
+            `with open("output.wav", "wb") as out:`,
+            `    out.write(audio_bytes)`
+          ].join('\n');
+        } else {
+          block.textContent = [
+            `from google.cloud import texttospeech`,
+            `from google.oauth2 import service_account`,
+            ``,
+            `# 1. 加载服务账号 JSON 密钥`,
+            `credentials = service_account.Credentials.from_service_account_file("service-account.json")`,
+            `client = texttospeech.TextToSpeechClient(credentials=credentials)`,
+            ``,
+            `# 2. 构建带有语气 Prompt 的 SynthesisInput`,
+            `synthesis_input = texttospeech.SynthesisInput(`,
+            `    text=${JSON.stringify((payload.input && payload.input.text) || '')},`,
+            `    prompt=${JSON.stringify((payload.input && payload.input.prompt) || '')}`,
+            `)`,
+            ``,
+            `# 3. 选择 Gemini-TTS 模型与声音`,
+            `voice = texttospeech.VoiceSelectionParams(`,
+            `    language_code=${JSON.stringify(payload.voice && payload.voice.languageCode)},`,
+            `    name=${JSON.stringify((payload.voice && payload.voice.name) || 'Aoede')},`,
+            `    model_name=${JSON.stringify((payload.voice && payload.voice.modelName) || model)}`,
+            `)`,
+            ``,
+            `audio_config = texttospeech.AudioConfig(`,
+            `    audio_encoding=texttospeech.AudioEncoding.${(payload.audioConfig && payload.audioConfig.audioEncoding) || 'MP3'}`,
+            `)`,
+            ``,
+            `response = client.synthesize_speech(`,
+            `    input=synthesis_input, voice=voice, audio_config=audio_config`,
+            `)`,
+            `with open("output.mp3", "wb") as out:`,
+            `    out.write(response.audio_content)`
+          ].join('\n');
+        }
+      }
+    }
+
+    // ============================================================================
+    // 8. Execute Cloud TTS Synthesis & Sync Voices
+    // ============================================================================
+    async function handleSynthesizeClick() {
+      const btn = document.getElementById('btnSynthesize');
+      const label = document.getElementById('btnSynthesizeLabel');
+      const model = document.getElementById('selectModel').value;
+      const isGenContent = useGenerateContentProtocol();
+      const payload = buildSynthesizePayload();
+
+      const mainTextVal = document.getElementById('textareaText').value.trim();
+      if (state.inputMode === 'single' && !mainTextVal) {
+        showToast('请输入要合成的文本内容', 'warning');
+        return;
+      }
+
+      if (state.credType === 'none') {
+        showToast('请先在左上角导入 Google Cloud 服务账号 JSON 密钥（也可点击「本地浏览器试听」测试）', 'warning');
+        document.getElementById('credentialModal').classList.remove('hidden');
+        document.getElementById('credentialModal').classList.add('flex');
+        return;
+      }
+
+      const projId = (state.serviceAccount && state.serviceAccount.project_id) || state.manualProjectId;
+      if (isGenContent && state.credType !== 'apikey' && !projId) {
+        showToast('调用 Gemini 3.8 Enterprise 端点需要 Project ID，请确保 JSON 密钥或手动凭据中包含 Project ID', 'warning');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.classList.add('opacity-70');
+      label.textContent = `正在签名并请求 ${model}...`;
+
+      const startTime = performance.now();
+      try {
+        let url = resolveTargetEndpointUrl();
+
+        const headers = {
+          'Content-Type': 'application/json; charset=utf-8'
+        };
+
+        if (state.credType === 'apikey') {
+          url += `${url.includes('?') ? '&' : '?'}key=${encodeURIComponent(state.apiKey)}`;
+        } else {
+          const token = await ensureValidAccessToken();
+          headers['Authorization'] = `Bearer ${token}`;
+          if (projId) {
+            headers['x-goog-user-project'] = projId;
+          }
+        }
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        // Extract base64 audio from either generateContent (candidates[0].content.parts[0].inlineData.data) or text:synthesize (audioContent)
+        let base64Audio = data.audioContent || null;
+        let detectedMime = null;
+        if (!base64Audio && data.candidates && data.candidates[0] && data.candidates[0].content && Array.isArray(data.candidates[0].content.parts)) {
+          for (const p of data.candidates[0].content.parts) {
+            const inline = p.inlineData || p.inline_data;
+            if (inline && inline.data) {
+              base64Audio = inline.data;
+              detectedMime = inline.mimeType || inline.mime_type || 'audio/wav';
+              break;
+            }
+          }
+        }
+
+        if (!response.ok || !base64Audio) {
+          const errMsg = (data.error && data.error.message) || `调用 ${model} 失败`;
+          throw new Error(errMsg);
+        }
+
+        const elapsedMs = Math.round(performance.now() - startTime);
+        const encoding = isGenContent ? 'LINEAR16' : (payload.audioConfig && payload.audioConfig.audioEncoding) || 'MP3';
+        const mimeMap = {
+          MP3: 'audio/mpeg',
+          LINEAR16: 'audio/wav',
+          OGG_OPUS: 'audio/ogg'
+        };
+        const extMap = {
+          MP3: 'mp3',
+          LINEAR16: 'wav',
+          OGG_OPUS: 'ogg'
+        };
+        const mimeType = detectedMime || mimeMap[encoding] || 'audio/wav';
+        const ext = mimeType.includes('wav') ? 'wav' : (extMap[encoding] || 'mp3');
+
+        const binaryStr = atob(base64Audio);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mimeType });
+        const objectUrl = URL.createObjectURL(blob);
+
+        const voiceLabel = state.inputMode === 'dialogue'
+          ? `${document.getElementById('selectSpeaker1Voice').value}+${document.getElementById('selectSpeaker2Voice').value}`
+          : (state.customVoiceName || state.selectedVoice);
+        const modelLabel = model;
+        const promptPreview = document.getElementById('textareaPrompt').value.trim() || '默认自然语气';
+        const textPreview = state.inputMode === 'dialogue'
+          ? state.dialogueTurns.map((t) => `${t.speaker}: ${t.text}`).join(' / ')
+          : document.getElementById('textareaText').value;
+
+        loadAudioIntoPlayer(objectUrl, `${voiceLabel}-${Date.now()}.${ext}`, `${voiceLabel} · ${modelLabel} (${elapsedMs}ms)`);
+
+        state.history.unshift({
+          id: Date.now(),
+          voice: voiceLabel,
+          model: modelLabel,
+          prompt: promptPreview,
+          text: textPreview,
+          url: objectUrl,
+          ext: ext,
+          time: new Date().toLocaleTimeString(),
+          elapsedMs
+        });
+        renderHistoryList();
+        showToast(`语音合成成功！耗时 ${elapsedMs}ms`, 'success');
+      } catch (err) {
+        showToast(`合成失败: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-70');
+        label.textContent = '调用 Google Cloud TTS 合成语音';
+      }
+    }
+
+    async function handleSyncCloudVoices() {
+      if (state.credType === 'none') {
+        showToast('请先导入 Google Cloud JSON 密钥后再同步云端音色列表', 'warning');
+        document.getElementById('credentialModal').classList.remove('hidden');
+        document.getElementById('credentialModal').classList.add('flex');
+        return;
+      }
+
+      const btn = document.getElementById('btnSyncCloudVoices');
+      btn.disabled = true;
+      try {
+        const endpointSel = document.getElementById('selectEndpoint').value;
+        const versionSel = document.getElementById('selectApiVersion').value;
+        const apiVer = versionSel === 'v1beta1' ? 'v1beta1' : 'v1';
+        let ttsBase = 'https://texttospeech.googleapis.com';
+        if (endpointSel === 'us') ttsBase = 'https://us-texttospeech.googleapis.com';
+        else if (endpointSel === 'eu') ttsBase = 'https://eu-texttospeech.googleapis.com';
+        const lang = document.getElementById('selectLanguage').value;
+        let url = `${ttsBase}/${apiVer}/voices?languageCode=${encodeURIComponent(lang)}`;
+
+        const headers = {};
+        if (state.credType === 'apikey') {
+          url += `&key=${encodeURIComponent(state.apiKey)}`;
+        } else {
+          const token = await ensureValidAccessToken();
+          headers['Authorization'] = `Bearer ${token}`;
+          const projId = (state.serviceAccount && state.serviceAccount.project_id) || state.manualProjectId;
+          if (projId) headers['x-goog-user-project'] = projId;
+        }
+
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.voices)) {
+          throw new Error((data.error && data.error.message) || '获取云端声音列表失败');
+        }
+
+        const existingNames = new Set(state.voicesList.map((v) => v.name));
+        let added = 0;
+        data.voices.forEach((cv) => {
+          if (!existingNames.has(cv.name)) {
+            state.voicesList.push({
+              name: cv.name,
+              gender: cv.ssmlGender === 'MALE' ? 'MALE' : 'FEMALE',
+              style: 'Cloud API',
+              zhDesc: `${(cv.languageCodes && cv.languageCodes[0]) || lang} · ${cv.naturalSampleRateHertz || 24000}Hz`,
+              tag: '云端同步'
+            });
+            existingNames.add(cv.name);
+            added++;
+          }
+        });
+        renderVoicesGrid();
+        showToast(`同步完成！新增 ${added} 个当前语言区域的云端音色`, 'success');
+      } catch (err) {
+        showToast(`同步云端音色失败: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ============================================================================
+    // 9. Audio Player, Web Audio Visualizer & Browser Preview
+    // ============================================================================
+    let audioCtx = null;
+    let analyser = null;
+    let sourceNode = null;
+    let animFrameId = null;
+
+    function loadAudioIntoPlayer(url, filename, metaText) {
+      const audioEl = document.getElementById('audioElement');
+      const dlBtn = document.getElementById('btnDownloadAudio');
+      const metaEl = document.getElementById('currentAudioMeta');
+      const placeholder = document.getElementById('waveformPlaceholder');
+
+      placeholder.classList.add('hidden');
+      audioEl.src = url;
+      dlBtn.href = url;
+      dlBtn.download = filename;
+      dlBtn.classList.remove('pointer-events-none', 'opacity-40');
+      metaEl.textContent = `当前播放: ${metaText}`;
+
+      setupAudioVisualizer(audioEl);
+      audioEl.play().catch(() => {});
+    }
+
+    function setupAudioVisualizer(audioEl) {
+      try {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AudioContextClass();
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 128;
+          sourceNode = audioCtx.createMediaElementSource(audioEl);
+          sourceNode.connect(analyser);
+          analyser.connect(audioCtx.destination);
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        drawWaveform();
+      } catch (e) {
+        // Fallback if Web Audio API is restricted
+      }
+    }
+
+    function drawWaveform() {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      const canvas = document.getElementById('waveformCanvas');
+      const ctx = canvas.getContext('2d');
+      const bufferLength = analyser ? analyser.frequencyBinCount : 64;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function renderFrame() {
+        animFrameId = requestAnimationFrame(renderFrame);
+        const width = (canvas.width = canvas.clientWidth || 400);
+        const height = (canvas.height = canvas.clientHeight || 80);
+        ctx.clearRect(0, 0, width, height);
+
+        if (analyser) {
+          analyser.getByteFrequencyData(dataArray);
+        }
+
+        const barWidth = (width / bufferLength) * 1.6;
+        let x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const val = dataArray[i] || 4;
+          const barHeight = Math.max(4, (val / 255) * (height - 10));
+          const y = (height - barHeight) / 2;
+
+          const grad = ctx.createLinearGradient(0, y, 0, y + barHeight);
+          grad.addColorStop(0, '#60a5fa');
+          grad.addColorStop(0.5, '#818cf8');
+          grad.addColorStop(1, '#38bdf8');
+          ctx.fillStyle = grad;
+          ctx.fillRect(x, y, Math.max(2, barWidth - 2), barHeight);
+          x += barWidth;
+        }
+      }
+      renderFrame();
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('historyList');
+      const countEl = document.getElementById('historyCount');
+      countEl.textContent = String(state.history.length);
+
+      if (state.history.length === 0) {
+        container.innerHTML = `
+          <div class="text-xs text-slate-500 py-4 text-center border border-dashed border-slate-800 rounded-xl">
+            暂无合成记录。每次调整语气 Prompt 或更换声音生成的音频都会保存在这里方便对比。
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = '';
+      state.history.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-950 border border-slate-800/90 hover:border-slate-700 transition-colors';
+        card.innerHTML = `
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">${escapeHtml(item.voice)}</span>
+              <span class="text-[11px] text-purple-300 truncate max-w-[200px]" title="${escapeHtml(item.prompt)}">语气: ${escapeHtml(item.prompt)}</span>
+              <span class="text-[10px] text-slate-500 font-mono ml-auto">${escapeHtml(item.time)}</span>
+            </div>
+            <p class="text-xs text-slate-300 truncate mt-1">${escapeHtml(item.text)}</p>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" data-play-history="${item.id}" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30">
+              播放
+            </button>
+            <a href="${item.url}" download="tts-${escapeHtml(item.voice)}-${item.id}.${item.ext}" class="px-2 py-1 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300">
+              下载
+            </a>
+          </div>
+        `;
+        card.querySelector('[data-play-history]').addEventListener('click', () => {
+          loadAudioIntoPlayer(item.url, `tts-${item.voice}-${item.id}.${item.ext}`, `${item.voice} · ${item.model}`);
+        });
+        container.appendChild(card);
+      });
+    }
+
+    function handleBrowserPreview() {
+      if (!('speechSynthesis' in window)) {
+        showToast('当前浏览器环境不支持 Web Speech API 本地试听', 'warning');
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const rawText = state.inputMode === 'dialogue'
+        ? state.dialogueTurns.map((t) => t.text).join('。')
+        : document.getElementById('textareaText').value;
+
+      const cleanText = rawText.replace(/\[[^\]]+\]/g, '').trim();
+      if (!cleanText) {
+        showToast('请输入要试听的文本内容', 'warning');
+        return;
+      }
+
+      const utter = new SpeechSynthesisUtterance(cleanText);
+      utter.lang = document.getElementById('selectLanguage').value;
+      utter.rate = parseFloat(document.getElementById('rangeSpeed').value);
+      window.speechSynthesis.speak(utter);
+      showToast('正在使用浏览器本地语音试听文稿节奏 (真实语气 Prompt 需通过 Google Cloud TTS 合成)', 'info');
+    }
+
+    // ============================================================================
+    // 10. Event Listeners & Initialization
+    // ============================================================================
+    function updateCharCounts() {
+      const promptLen = document.getElementById('textareaPrompt').value.length;
+      document.getElementById('promptCharCount').textContent = `${promptLen} 字符`;
+
+      const textLen = state.inputMode === 'dialogue'
+        ? state.dialogueTurns.reduce((acc, t) => acc + t.text.length, 0)
+        : document.getElementById('textareaText').value.length;
+      document.getElementById('textCharCount').textContent = `${textLen} 字符`;
+    }
+
+    function initApp() {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+
+      renderTonePresets();
+      renderVoicesGrid();
+      updateSelectedVoiceBanner();
+      populateDialogueSpeakerSelects();
+      renderDialogueTurns();
+      updateCharCounts();
+
+      // Check localStorage for saved Service Account JSON
+      try {
+        const savedSa = localStorage.getItem('gcp_tts_sa_json');
+        if (savedSa) {
+          document.getElementById('chkRememberKey').checked = true;
+          handleServiceAccountJsonString(savedSa, false);
+        }
+      } catch (e) {}
+
+      // File Input & Drag-and-Drop for Service Account JSON
+      const fileInput = document.getElementById('jsonFileInput');
+      const dropzone = document.getElementById('jsonDropzone');
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          handleServiceAccountJsonString(String(ev.target.result || ''));
+        };
+        reader.readAsText(file);
+        fileInput.value = '';
+      });
+
+      ['dragenter', 'dragover'].forEach((evt) => {
+        dropzone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add('border-blue-500', 'bg-blue-950/20');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach((evt) => {
+        dropzone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove('border-blue-500', 'bg-blue-950/20');
+        });
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          handleServiceAccountJsonString(String(ev.target.result || ''));
+        };
+        reader.readAsText(file);
+      });
+
+      // Credential Modal Controls
+      const credModal = document.getElementById('credentialModal');
+      const openCredModal = () => {
+        credModal.classList.remove('hidden');
+        credModal.classList.add('flex');
+      };
+      const closeCredModal = () => {
+        credModal.classList.add('hidden');
+        credModal.classList.remove('flex');
+      };
+
+      document.getElementById('btnOpenKeyModal').addEventListener('click', openCredModal);
+      document.getElementById('btnPasteJsonModal').addEventListener('click', openCredModal);
+      document.getElementById('btnCloseCredentialModal').addEventListener('click', closeCredModal);
+
+      document.querySelectorAll('.cred-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.activeCredTab = btn.getAttribute('data-cred-tab');
+          document.querySelectorAll('.cred-tab-btn').forEach((b) => {
+            b.className = b === btn
+              ? 'cred-tab-btn px-3 py-1.5 rounded-lg font-medium bg-blue-600 text-white'
+              : 'cred-tab-btn px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-slate-200';
+          });
+          document.getElementById('credTabJson').classList.toggle('hidden', state.activeCredTab !== 'json');
+          document.getElementById('credTabToken').classList.toggle('hidden', state.activeCredTab !== 'token');
+        });
+      });
+
+      document.getElementById('btnFillDemoJsonStructure').addEventListener('click', () => {
+        document.getElementById('textareaServiceAccountJson').value = JSON.stringify({
+          type: 'service_account',
+          project_id: 'your-gcp-project-id',
+          private_key_id: 'd41d8cd98f00b204e9800998ecf8427e',
+          private_key: '-----BEGIN PRIVATE KEY-----\n请在此处替换为您从 Google Cloud IAM 下载的真实私钥内容\n-----END PRIVATE KEY-----\n',
+          client_email: 'tts-studio@your-gcp-project-id.iam.gserviceaccount.com',
+          client_id: '100000000000000000000',
+          auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+          token_uri: 'https://oauth2.googleapis.com/token'
+        }, null, 2);
+      });
+
+      document.getElementById('btnApplyServiceAccountJson').addEventListener('click', () => {
+        const raw = document.getElementById('textareaServiceAccountJson').value;
+        if (handleServiceAccountJsonString(raw)) {
+          closeCredModal();
+        }
+      });
+
+      document.getElementById('btnApplyManualToken').addEventListener('click', () => {
+        const bearer = document.getElementById('inputManualBearerToken').value.trim();
+        const proj = document.getElementById('inputManualProjectId').value.trim();
+        const apiKey = document.getElementById('inputManualApiKey').value.trim();
+
+        if (bearer) {
+          state.credType = 'bearer';
+          state.accessToken = bearer;
+          state.manualProjectId = proj;
+          updateCredentialUI();
+          closeCredModal();
+          showToast('已保存 OAuth 2.0 Bearer Token', 'success');
+        } else if (apiKey) {
+          state.credType = 'apikey';
+          state.apiKey = apiKey;
+          state.manualProjectId = proj;
+          updateCredentialUI();
+          closeCredModal();
+          showToast('已保存 Google Cloud API Key', 'success');
+        } else {
+          showToast('请填入 Access Token 或 API Key', 'warning');
+        }
+      });
+
+      document.getElementById('btnClearCredentials').addEventListener('click', () => {
+        state.credType = 'none';
+        state.serviceAccount = null;
+        state.accessToken = '';
+        state.apiKey = '';
+        try {
+          localStorage.removeItem('gcp_tts_sa_json');
+        } catch (e) {}
+        updateCredentialUI();
+        showToast('已清除本地凭据', 'info');
+      });
+
+      document.getElementById('btnRefreshToken').addEventListener('click', () => {
+        if (state.credType === 'service_account' && state.serviceAccount) {
+          generateServiceAccountAccessToken(state.serviceAccount)
+            .then(() => showToast('Access Token 刷新成功！', 'success'))
+            .catch((e) => showToast(`刷新失败: ${e.message}`, 'error'));
+        } else {
+          openCredModal();
+        }
+      });
+
+      // Inspector Modal Controls
+      const inspectorModal = document.getElementById('inspectorModal');
+      document.getElementById('btnToggleInspector').addEventListener('click', () => {
+        updateInspectorCode();
+        inspectorModal.classList.remove('hidden');
+        inspectorModal.classList.add('flex');
+      });
+      document.getElementById('btnCloseInspectorModal').addEventListener('click', () => {
+        inspectorModal.classList.add('hidden');
+        inspectorModal.classList.remove('flex');
+      });
+      document.querySelectorAll('.code-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.activeCodeTab = btn.getAttribute('data-code-tab');
+          document.querySelectorAll('.code-tab-btn').forEach((b) => {
+            b.className = b === btn
+              ? 'code-tab-btn px-3 py-1 rounded-lg font-medium bg-blue-600 text-white'
+              : 'code-tab-btn px-3 py-1 rounded-lg font-medium text-slate-400 hover:text-slate-200';
+          });
+          updateInspectorCode();
+        });
+      });
+      document.getElementById('btnCopyInspectorCode').addEventListener('click', () => {
+        copyTextToClipboard(document.getElementById('inspectorCodeBlock').textContent);
+      });
+
+      // Voice Filters & Search
+      document.getElementById('inputVoiceSearch').addEventListener('input', (e) => {
+        state.voiceSearch = e.target.value;
+        renderVoicesGrid();
+      });
+
+      document.querySelectorAll('.voice-gender-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.genderFilter = btn.getAttribute('data-gender-filter');
+          document.querySelectorAll('.voice-gender-btn').forEach((b) => {
+            b.className = b === btn
+              ? 'voice-gender-btn px-2.5 py-1 rounded-md text-xs font-medium bg-blue-600 text-white transition-colors'
+              : 'voice-gender-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors';
+          });
+          renderVoicesGrid();
+        });
+      });
+
+      document.getElementById('inputCustomVoiceName').addEventListener('input', (e) => {
+        state.customVoiceName = e.target.value.trim();
+        updateSelectedVoiceBanner();
+        renderVoicesGrid();
+      });
+
+      // Model change badge update
+      document.getElementById('selectModel').addEventListener('change', (e) => {
+        const val = e.target.value;
+        const isGemini = val !== 'standard-cloud-tts';
+        const badge = document.getElementById('promptSupportBadge');
+        const codeEl = document.getElementById('promptFieldCode');
+        if (isGemini38Model(val)) {
+          badge.textContent = `${val} 已启用 (speech_metadata.style)`;
+          badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30';
+          if (codeEl) codeEl.textContent = 'speech_metadata.style';
+        } else if (isGemini) {
+          badge.textContent = 'Gemini-TTS 已启用 (input.prompt)';
+          badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30';
+          if (codeEl) codeEl.textContent = 'input.prompt';
+        } else {
+          badge.textContent = '传统模型忽略 Prompt';
+          badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30';
+          if (codeEl) codeEl.textContent = 'N/A';
+        }
+      });
+
+      // Input Mode Switcher (Single / Dialogue / SSML)
+      document.querySelectorAll('.input-mode-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.inputMode = btn.getAttribute('data-input-mode');
+          document.querySelectorAll('.input-mode-btn').forEach((b) => {
+            b.className = b === btn
+              ? 'input-mode-btn px-2.5 py-1 rounded-md text-xs font-medium bg-blue-600 text-white transition-colors'
+              : 'input-mode-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors';
+          });
+          const isDialogue = state.inputMode === 'dialogue';
+          document.getElementById('singleTextContainer').classList.toggle('hidden', isDialogue);
+          document.getElementById('dialogueContainer').classList.toggle('hidden', !isDialogue);
+          updateCharCounts();
+        });
+      });
+
+      document.getElementById('btnAddDialogueTurn').addEventListener('click', () => {
+        const lastSpeaker = state.dialogueTurns.length > 0
+          ? state.dialogueTurns[state.dialogueTurns.length - 1].speaker
+          : 'S';
+        state.dialogueTurns.push({
+          speaker: lastSpeaker === 'R' ? 'S' : 'R',
+          text: ''
+        });
+        renderDialogueTurns();
+      });
+
+      // Inline Expressive Tag Insertion
+      document.querySelectorAll('.tag-insert-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const tag = btn.getAttribute('data-insert-tag');
+          const ta = document.getElementById('textareaText');
+          if (state.inputMode === 'dialogue') {
+            state.dialogueTurns[state.dialogueTurns.length - 1].text += ` ${tag}`;
+            renderDialogueTurns();
+            return;
+          }
+          const start = ta.selectionStart || 0;
+          const end = ta.selectionEnd || 0;
+          const val = ta.value;
+          ta.value = val.slice(0, start) + tag + val.slice(end);
+          ta.focus();
+          ta.selectionStart = ta.selectionEnd = start + tag.length;
+          updateCharCounts();
+        });
+      });
+
+      // Sample Text Switcher
+      document.getElementById('btnLoadSampleText').addEventListener('click', () => {
+        state.sampleIndex = (state.sampleIndex + 1) % SAMPLE_TEXTS.length;
+        const sample = SAMPLE_TEXTS[state.sampleIndex];
+        document.getElementById('textareaPrompt').value = sample.prompt;
+        if (sample.mode === 'dialogue') {
+          state.dialogueTurns = sample.turns.map((t) => ({ ...t }));
+          renderDialogueTurns();
+          document.querySelector('[data-input-mode="dialogue"]').click();
+        } else {
+          document.getElementById('textareaText').value = sample.text;
+          document.querySelector('[data-input-mode="single"]').click();
+        }
+        updateCharCounts();
+        showToast('已载入示例台词与对应语气 Prompt', 'info');
+      });
+
+      document.getElementById('btnClearPrompt').addEventListener('click', () => {
+        document.getElementById('textareaPrompt').value = '';
+        updateCharCounts();
+      });
+
+      document.getElementById('textareaPrompt').addEventListener('input', updateCharCounts);
+      document.getElementById('textareaText').addEventListener('input', updateCharCounts);
+
+      // Sliders
+      document.getElementById('rangeSpeed').addEventListener('input', (e) => {
+        document.getElementById('labelSpeedVal').textContent = `${parseFloat(e.target.value).toFixed(2)}x`;
+      });
+      document.getElementById('rangePitch').addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        document.getElementById('labelPitchVal').textContent = `${v > 0 ? '+' : ''}${v.toFixed(1)} st`;
+      });
+
+      // Action Buttons
+      document.getElementById('btnSynthesize').addEventListener('click', handleSynthesizeClick);
+      document.getElementById('btnBrowserPreview').addEventListener('click', handleBrowserPreview);
+      document.getElementById('btnSyncCloudVoices').addEventListener('click', handleSyncCloudVoices);
+      document.getElementById('btnClearHistory').addEventListener('click', () => {
+        state.history = [];
+        renderHistoryList();
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
