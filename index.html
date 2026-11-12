@@ -250,10 +250,97 @@
             </div>
           </div>
 
-          <button id="btnSyncCloudVoices" type="button" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors" title="调用 /v1/voices 同步云端音色列表">
-            <i data-lucide="cloud-download" class="w-3.5 h-3.5 text-cyan-400"></i>
-            <span>同步云端列表</span>
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button id="btnToggleVoiceDesign" type="button" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-purple-200 border border-purple-500/40 transition-all" title="使用自然语言设计专属音色 (VOICE_TYPE_PROMPTED)">
+              <i data-lucide="wand-sparkles" class="w-3.5 h-3.5 text-purple-300"></i>
+              <span>语音设计 (Voice Design)</span>
+            </button>
+            <button id="btnSyncCloudVoices" type="button" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors" title="调用 /v1/voices 同步云端音色列表">
+              <i data-lucide="cloud-download" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>同步云端列表</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Collapsible Voice Design Studio Panel (VOICE_TYPE_PROMPTED) -->
+        <div id="voiceDesignPanel" class="mb-3 p-3.5 rounded-xl bg-gradient-to-b from-purple-950/35 to-slate-950/90 border border-purple-500/35 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-purple-500/25 text-purple-200 border border-purple-400/30">VOICE_TYPE_PROMPTED</span>
+              <h3 class="text-xs font-semibold text-white">Gemini 3.8 语音设计工坊 (Voice Design)</h3>
+            </div>
+            <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/text-to-speech/voice-design" target="_blank" rel="noopener noreferrer" class="text-[11px] text-purple-300 hover:text-purple-200 inline-flex items-center gap-1">
+              Voice Design 文档 <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+          </div>
+
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            通过自然语言描述角色的<strong>年龄、性别、音色质感、地域口音与基准播讲风格</strong>，调用 Voices API 生成持久化的 <code class="text-purple-300 font-mono">voice_...</code> 专属音色 ID 并返回试听样本。
+          </p>
+
+          <!-- Quick Persona Presets for Voice Design -->
+          <div>
+            <span class="block text-[10px] text-slate-400 mb-1">一键填入人设音色描述模板:</span>
+            <div id="voiceDesignPresets" class="flex flex-wrap gap-1"></div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label for="inputVoiceDesignName" class="block text-[10px] text-slate-400 mb-0.5">音色显示名称 (display_name)</label>
+              <input id="inputVoiceDesignName" type="text" value="Warm Documentary Narrator" placeholder="如 Storyteller_CN" class="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-purple-400" />
+            </div>
+            <div>
+              <label for="selectVoiceDesignGender" class="block text-[10px] text-slate-400 mb-0.5">性别表现 (gender)</label>
+              <select id="selectVoiceDesignGender" class="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-purple-400">
+                <option value="female">female (女声)</option>
+                <option value="male" selected>male (男声)</option>
+                <option value="neutral">neutral (中性)</option>
+              </select>
+            </div>
+            <div>
+              <label for="selectVoiceDesignLang" class="block text-[10px] text-slate-400 mb-0.5">基准语言 (language_code)</label>
+              <select id="selectVoiceDesignLang" class="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-purple-400 font-mono">
+                <option value="cmn-CN" selected>cmn-CN</option>
+                <option value="en-US">en-US</option>
+                <option value="en-GB">en-GB</option>
+                <option value="yue-HK">yue-HK</option>
+                <option value="ja-JP">ja-JP</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label for="textareaVoiceDesignPrompt" class="block text-[10px] text-slate-400 mb-0.5">音色永久特征描述 (<code class="font-mono text-purple-300">voice.prompted.input</code>)</label>
+            <textarea id="textareaVoiceDesignPrompt" rows="2" placeholder="描述年龄、音色质感、口音与基础说话方式，如：一位35岁左右成熟稳重的纪录片男中音旁白，声音温暖醇厚略带磁性，普通话标准，语速从容，充满好奇与敬畏感。" class="w-full rounded-lg bg-slate-950 border border-slate-700/80 focus:border-purple-400 px-2.5 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none custom-scrollbar resize-y">一位35岁左右成熟稳重的纪录片男中音旁白，声音温暖醇厚略带磁性，吐字清晰，语速从容沉稳，带有安静的探索感与亲和力。</textarea>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+              <button id="btnCreateDesignedVoice" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow transition-all">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                <span id="btnCreateDesignedVoiceLabel">生成并保存设计音色 (store: true)</span>
+              </button>
+              <button id="btnFetchStoredVoices" type="button" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors" title="获取项目中已保存的自定义设计音色列表">
+                <i data-lucide="folder-sync" class="w-3.5 h-3.5 text-purple-300"></i>
+                <span>拉取已存音色</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-1">
+              <input id="inputManualVoiceId" type="text" placeholder="或填入已有 voice_... ID" class="w-36 rounded-lg bg-slate-950 border border-slate-700/80 px-2 py-1 text-[11px] font-mono text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-purple-400" />
+              <button id="btnSaveManualVoiceId" type="button" class="px-2 py-1 rounded-lg text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-purple-200 border border-slate-700">添加</button>
+            </div>
+          </div>
+
+          <!-- Voice Design Sample Audio Preview & Stored Custom Voices List -->
+          <div id="voiceDesignSampleContainer" class="hidden p-2.5 rounded-lg bg-slate-950/90 border border-purple-500/30 space-y-1.5">
+            <div class="flex items-center justify-between text-[11px]">
+              <span id="voiceDesignSampleTitle" class="text-purple-200 font-mono font-medium">新生成音色样本试听 (sample_audio)</span>
+              <span id="voiceDesignUsageBadge" class="text-[10px] text-slate-400 font-mono"></span>
+            </div>
+            <audio id="voiceDesignSampleAudio" controls playsinline class="w-full h-8"></audio>
+          </div>
+
+          <div id="designedVoicesListContainer" class="space-y-1.5 max-h-[130px] overflow-y-auto custom-scrollbar"></div>
         </div>
 
         <!-- Search & Gender Filter Bar -->
@@ -355,33 +442,92 @@
           </div>
         </div>
 
-        <!-- Inline Expressive Tag Insertion Bar -->
-        <div id="inlineTagsToolbar" class="mb-3 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80">
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="text-[11px] text-slate-400 flex items-center gap-1">
-              <i data-lucide="wand-2" class="w-3 h-3 text-amber-400"></i>
-              光标处插入行内语气/副语言标签 (Gemini-TTS 特性):
-            </span>
-            <button id="btnLoadSampleText" type="button" class="text-[11px] text-blue-400 hover:text-blue-300">
+        <!-- Inline Expressive Tag & Non-Speech Vocal Bursts Insertion Bar -->
+        <div id="inlineTagsToolbar" class="mb-3 p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] text-slate-300 font-medium flex items-center gap-1">
+                <i data-lucide="wand-2" class="w-3.5 h-3.5 text-amber-400"></i>
+                非语言声音与语气标签库 (Vocal Bursts &amp; Non-Speech Sounds):
+              </span>
+              <a href="https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/text-to-speech/prompting-guide#vocal-bursts" target="_blank" rel="noopener noreferrer" class="text-[11px] text-purple-300 hover:text-purple-200 inline-flex items-center gap-0.5">
+                官方标签指南 <i data-lucide="external-link" class="w-3 h-3"></i>
+              </a>
+            </div>
+            <button id="btnLoadSampleText" type="button" class="text-[11px] text-blue-400 hover:text-blue-300 font-medium">
               载入示例台词
             </button>
           </div>
-          <div class="flex flex-wrap gap-1.5">
-            <button type="button" data-insert-tag="<laugh> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 推荐尖括号标签">&lt;laugh&gt; 笑声(3.8)</button>
-            <button type="button" data-insert-tag="<sigh> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 推荐尖括号标签">&lt;sigh&gt; 叹气(3.8)</button>
-            <button type="button" data-insert-tag="<short pause> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 短停顿标签">&lt;short pause&gt; 停顿(3.8)</button>
-            <button type="button" data-insert-tag="<breath> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 呼吸声标签">&lt;breath&gt; 呼吸(3.8)</button>
-            <button type="button" data-insert-tag="<cough> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 轻咳标签">&lt;cough&gt; 轻咳(3.8)</button>
-            <button type="button" data-insert-tag="|mhm| " class="tag-insert-btn px-2 py-0.5 rounded bg-indigo-950/60 hover:bg-indigo-900/70 text-[11px] font-mono text-indigo-200 border border-indigo-500/40 transition-colors" title="Gemini 3.8 双人对话背景附和声">|mhm| 附和(3.8)</button>
-            <button type="button" data-insert-tag="[cheerful] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[cheerful] 欢快</button>
-            <button type="button" data-insert-tag="[whispering] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[whispering] 耳语</button>
-            <button type="button" data-insert-tag="[laughing] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[laughing] 笑声</button>
-            <button type="button" data-insert-tag="[sighs] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[sighs] 叹气</button>
-            <button type="button" data-insert-tag="[delighted] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[delighted] 欣喜</button>
-            <button type="button" data-insert-tag="[sad] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[sad] 悲伤</button>
-            <button type="button" data-insert-tag="[slow pace] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[slow pace] 慢速</button>
-            <button type="button" data-insert-tag="[fast pace] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[fast pace] 快速</button>
-            <button type="button" data-insert-tag="[coughs] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[coughs] 轻咳</button>
+
+          <!-- Category Filter Tabs for Vocal Bursts -->
+          <div class="flex flex-wrap gap-1 border-b border-slate-800/80 pb-2">
+            <button type="button" data-burst-cat="all" class="burst-cat-btn px-2 py-0.5 rounded text-[11px] font-medium bg-purple-600 text-white transition-colors">全部标签 (40+)</button>
+            <button type="button" data-burst-cat="laugh" class="burst-cat-btn px-2 py-0.5 rounded text-[11px] font-medium bg-slate-900 text-slate-400 hover:text-slate-200 transition-colors">😄 笑声与欢呼</button>
+            <button type="button" data-burst-cat="breath" class="burst-cat-btn px-2 py-0.5 rounded text-[11px] font-medium bg-slate-900 text-slate-400 hover:text-slate-200 transition-colors">😮‍💨 呼吸与叹气</button>
+            <button type="button" data-burst-cat="throat" class="burst-cat-btn px-2 py-0.5 rounded text-[11px] font-medium bg-slate-900 text-slate-400 hover:text-slate-200 transition-colors">🤧 咳嗽/清嗓/生理</button>
+            <button type="button" data-burst-cat="emotion" class="burst-cat-btn px-2 py-0.5 rounded text-[11px] font-medium bg-slate-900 text-slate-400 hover:text-slate-200 transition-colors">😱 哭泣/呻吟/惊叫</button>
+            <button type="button" data-burst-cat="pause" class="burst-cat-btn px-2 py-0.5 rounded text-[11px] font-medium bg-slate-900 text-slate-400 hover:text-slate-200 transition-colors">⏸️ 停顿与双人附和</button>
+            <button type="button" data-burst-cat="legacy" class="burst-cat-btn px-2 py-0.5 rounded text-[11px] font-medium bg-slate-900 text-slate-400 hover:text-slate-200 transition-colors">🔖 2.5/3.1 方括号</button>
+          </div>
+
+          <div id="vocalBurstsTagsContainer" class="flex flex-wrap gap-1.5 max-h-[135px] overflow-y-auto custom-scrollbar pr-1">
+            <!-- Laughter & Joy (Gemini 3.8 Official Vocal Bursts) -->
+            <button type="button" data-burst-group="laugh" data-insert-tag="<laugh> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 推荐尖括号标签">&lt;laugh&gt; 笑声(3.8)</button>
+            <button type="button" data-burst-group="laugh" data-insert-tag="<laughter> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="持续笑声">&lt;laughter&gt; 大笑</button>
+            <button type="button" data-burst-group="laugh" data-insert-tag="<chuckle> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="轻声低笑">&lt;chuckle&gt; 轻笑</button>
+            <button type="button" data-burst-group="laugh" data-insert-tag="<chuckles> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="连续轻笑">&lt;chuckles&gt; 浅笑</button>
+            <button type="button" data-burst-group="laugh" data-insert-tag="<giggle> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="咯咯笑">&lt;giggle&gt; 咯咯笑</button>
+            <button type="button" data-burst-group="laugh" data-insert-tag="<snicker> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="窃笑/偷笑">&lt;snicker&gt; 窃笑</button>
+            <button type="button" data-burst-group="laugh" data-insert-tag="<cackle> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="放声狂笑">&lt;cackle&gt; 狂笑</button>
+            <button type="button" data-burst-group="laugh" data-insert-tag="<cheer> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="欢呼喝彩">&lt;cheer&gt; 欢呼</button>
+
+            <!-- Breathing & Sighs -->
+            <button type="button" data-burst-group="breath" data-insert-tag="<sigh> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 推荐尖括号标签">&lt;sigh&gt; 叹气(3.8)</button>
+            <button type="button" data-burst-group="breath" data-insert-tag="<breath> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 呼吸声标签">&lt;breath&gt; 呼吸(3.8)</button>
+            <button type="button" data-burst-group="breath" data-insert-tag="<gasp> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="倒吸凉气/惊喘">&lt;gasp&gt; 倒吸气/惊喘</button>
+            <button type="button" data-burst-group="breath" data-insert-tag="<pant> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="急促喘息">&lt;pant&gt; 喘气</button>
+            <button type="button" data-burst-group="breath" data-insert-tag="<yawn> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="困倦打哈欠">&lt;yawn&gt; 打哈欠</button>
+            <button type="button" data-burst-group="breath" data-insert-tag="<phew> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="如释重负松一口气">&lt;phew&gt; 松口气</button>
+            <button type="button" data-burst-group="breath" data-insert-tag="<pff> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="轻噗呼气">&lt;pff&gt; 噗嗤呼气</button>
+
+            <!-- Throat & Physiological -->
+            <button type="button" data-burst-group="throat" data-insert-tag="<cough> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 轻咳标签">&lt;cough&gt; 轻咳(3.8)</button>
+            <button type="button" data-burst-group="throat" data-insert-tag="<throat-clearing> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="清嗓子">&lt;throat-clearing&gt; 清嗓子</button>
+            <button type="button" data-burst-group="throat" data-insert-tag="<sneeze> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="打喷嚏">&lt;sneeze&gt; 打喷嚏</button>
+            <button type="button" data-burst-group="throat" data-insert-tag="<snort> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="鼻息哼声">&lt;snort&gt; 哼鼻声</button>
+            <button type="button" data-burst-group="throat" data-insert-tag="<tsk> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="啧啧声">&lt;tsk&gt; 啧啧声</button>
+
+            <!-- Cries, Groans & Screams -->
+            <button type="button" data-burst-group="emotion" data-insert-tag="<cry> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="哭泣声">&lt;cry&gt; 哭泣</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<whimper> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="低声呜咽抽泣">&lt;whimper&gt; 呜咽</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<groan> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="痛苦或无奈呻吟">&lt;groan&gt; 呻吟/哀叹</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<moan> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="低吟声">&lt;moan&gt; 低吟</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<grunt> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="用力或不满哼声">&lt;grunt&gt; 沉闷哼声</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<growl> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="低沉咆哮">&lt;growl&gt; 低吼</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<grr> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="咬牙低吼声">&lt;grr&gt; 咬牙咕噜</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<hiss> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="嘶嘶吸气声">&lt;hiss&gt; 嘶嘶声</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<shout> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="大声呼喊">&lt;shout&gt; 大喊</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<scream> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="惊恐或激动尖叫">&lt;scream&gt; 尖叫</button>
+            <button type="button" data-burst-group="emotion" data-insert-tag="<shriek> " class="tag-insert-btn px-2 py-0.5 rounded bg-rose-950/60 hover:bg-rose-900/70 text-[11px] font-mono text-rose-200 border border-rose-500/40 transition-colors" title="尖锐惊叫">&lt;shriek&gt; 尖锐惊叫</button>
+
+            <!-- Pauses & Conversational Backchannels -->
+            <button type="button" data-burst-group="pause" data-insert-tag="<short pause> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 短停顿标签">&lt;short pause&gt; 停顿(3.8)</button>
+            <button type="button" data-burst-group="pause" data-insert-tag="<long pause> " class="tag-insert-btn px-2 py-0.5 rounded bg-purple-950/60 hover:bg-purple-900/70 text-[11px] font-mono text-purple-200 border border-purple-500/40 transition-colors" title="Gemini 3.8 长停顿标签">&lt;long pause&gt; 长停顿(3.8)</button>
+            <button type="button" data-burst-group="pause" data-insert-tag="|mhm| " class="tag-insert-btn px-2 py-0.5 rounded bg-indigo-950/60 hover:bg-indigo-900/70 text-[11px] font-mono text-indigo-200 border border-indigo-500/40 transition-colors" title="Gemini 3.8 双人对话背景附和声">|mhm| 附和(3.8)</button>
+            <button type="button" data-burst-group="pause" data-insert-tag="|yeah| " class="tag-insert-btn px-2 py-0.5 rounded bg-indigo-950/60 hover:bg-indigo-900/70 text-[11px] font-mono text-indigo-200 border border-indigo-500/40 transition-colors" title="双人对话同时附和: 是啊">|yeah| 附和:是啊</button>
+            <button type="button" data-burst-group="pause" data-insert-tag="|oh really?| " class="tag-insert-btn px-2 py-0.5 rounded bg-indigo-950/60 hover:bg-indigo-900/70 text-[11px] font-mono text-indigo-200 border border-indigo-500/40 transition-colors" title="双人对话同时附和: 真的吗">|oh really?| 附和:真的吗</button>
+            <button type="button" data-burst-group="pause" data-insert-tag="|wait| " class="tag-insert-btn px-2 py-0.5 rounded bg-indigo-950/60 hover:bg-indigo-900/70 text-[11px] font-mono text-indigo-200 border border-indigo-500/40 transition-colors" title="双人对话同时插话: 等等">|wait| 插话:等等</button>
+
+            <!-- Legacy 2.5 / 3.1 Square Bracket Tags -->
+            <button type="button" data-burst-group="legacy" data-insert-tag="[cheerful] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[cheerful] 欢快</button>
+            <button type="button" data-burst-group="legacy" data-insert-tag="[whispering] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[whispering] 耳语</button>
+            <button type="button" data-burst-group="legacy" data-insert-tag="[laughing] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[laughing] 笑声</button>
+            <button type="button" data-burst-group="legacy" data-insert-tag="[sighs] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[sighs] 叹气</button>
+            <button type="button" data-burst-group="legacy" data-insert-tag="[delighted] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[delighted] 欣喜</button>
+            <button type="button" data-burst-group="legacy" data-insert-tag="[sad] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[sad] 悲伤</button>
+            <button type="button" data-burst-group="legacy" data-insert-tag="[slow pace] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[slow pace] 慢速</button>
+            <button type="button" data-burst-group="legacy" data-insert-tag="[fast pace] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[fast pace] 快速</button>
+            <button type="button" data-burst-group="legacy" data-insert-tag="[coughs] " class="tag-insert-btn px-2 py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 text-[11px] font-mono text-amber-300 border border-slate-700 transition-colors">[coughs] 轻咳</button>
           </div>
         </div>
 
@@ -394,21 +540,25 @@
         <div id="dialogueContainer" class="hidden space-y-3">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800">
             <div>
-              <label for="selectSpeaker1Voice" class="block text-[11px] text-slate-400 mb-1">说话人 A (Speaker 1 音色)</label>
+              <label for="selectSpeaker1Voice" class="block text-[11px] text-slate-400 mb-1">说话人 A (Speaker R 音色 · 支持预置或设计音色)</label>
               <select id="selectSpeaker1Voice" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100"></select>
             </div>
             <div>
-              <label for="selectSpeaker2Voice" class="block text-[11px] text-slate-400 mb-1">说话人 B (Speaker 2 音色)</label>
+              <label for="selectSpeaker2Voice" class="block text-[11px] text-slate-400 mb-1">说话人 B (Speaker S 音色 · 支持预置或设计音色)</label>
               <select id="selectSpeaker2Voice" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100"></select>
             </div>
           </div>
 
-          <div id="dialogueTurnsList" class="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
+          <div class="flex items-center justify-between text-[11px] text-slate-400 px-1">
+            <span>提示：每个对话文本框均已放大并支持<strong>随输入字数自适应增高</strong>；点击上方非语言标签可直接插入到当前焦点台词光标处。</span>
+          </div>
+
+          <div id="dialogueTurnsList" class="space-y-3 max-h-[560px] overflow-y-auto custom-scrollbar pr-1">
             <!-- Populated by JS -->
           </div>
 
-          <button id="btnAddDialogueTurn" type="button" class="w-full py-1.5 rounded-lg border border-dashed border-slate-700 hover:border-blue-500 text-xs text-slate-300 hover:text-blue-300 transition-colors flex items-center justify-center gap-1">
-            <i data-lucide="plus" class="w-3.5 h-3.5"></i> 添加一行对话台词
+          <button id="btnAddDialogueTurn" type="button" class="w-full py-2 rounded-xl border border-dashed border-slate-700 hover:border-blue-500 text-xs font-medium text-slate-300 hover:text-blue-300 transition-colors flex items-center justify-center gap-1.5">
+            <i data-lucide="plus" class="w-4 h-4"></i> 添加一行对话台词
           </button>
         </div>
 
@@ -479,15 +629,38 @@
           </a>
         </div>
 
-        <!-- Waveform Canvas & Native Audio Controls -->
-        <div id="player" class="rounded-xl bg-slate-950 border border-slate-800/90 p-3 space-y-2.5">
+        <!-- Waveform Canvas & Native iOS Background-Ready Audio Controls -->
+        <div id="player" class="rounded-xl bg-slate-950 border border-slate-800/90 p-3 space-y-3">
           <div class="relative h-20 w-full rounded-lg bg-slate-900/70 overflow-hidden flex items-center justify-center">
             <canvas id="waveformCanvas" class="w-full h-full block"></canvas>
             <div id="waveformPlaceholder" class="absolute inset-0 flex items-center justify-center text-xs text-slate-500 pointer-events-none">
               等待合成音频输出或点击上方按钮生成...
             </div>
           </div>
-          <audio id="audioElement" controls class="w-full h-9"></audio>
+          <audio id="audioElement" controls playsinline webkit-playsinline preload="auto" class="w-full h-9"></audio>
+
+          <!-- iOS Background Continuous Playback Control Bar -->
+          <div class="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span class="text-[11px] font-medium text-emerald-300">iOS 锁屏/后台持续播放已启用</span>
+              <span class="text-[10px] text-slate-500 hidden sm:inline">(原生 MediaSession + 独立解码频谱，不劫持硬件音频流)</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 text-[11px] text-slate-300">
+              <label class="inline-flex items-center gap-1 cursor-pointer select-none" title="开启后在锁屏或切换后台时保持音频会话活跃，防止生成间隔被 iOS 挂起">
+                <input id="chkIosBgKeepAlive" type="checkbox" checked class="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-0" />
+                <span>iOS 后台会话保活</span>
+              </label>
+              <label class="inline-flex items-center gap-1 cursor-pointer select-none" title="当前语音播放完毕后自动按顺序连续播放历史列表中的下一条语音">
+                <input id="chkAutoNextHistory" type="checkbox" checked class="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-0" />
+                <span>历史列表连播</span>
+              </label>
+              <label class="inline-flex items-center gap-1 cursor-pointer select-none" title="单曲循环当前生成的音频">
+                <input id="chkLoopAudio" type="checkbox" class="rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-0" />
+                <span>单曲循环</span>
+              </label>
+            </div>
+          </div>
         </div>
 
         <!-- Synthesis History List -->
@@ -593,10 +766,11 @@
       </div>
 
       <div class="flex items-center justify-between gap-2">
-        <div class="flex gap-2 text-xs">
+        <div class="flex flex-wrap gap-2 text-xs">
           <button type="button" data-code-tab="json" class="code-tab-btn px-3 py-1 rounded-lg font-medium bg-blue-600 text-white">REST JSON 请求体</button>
           <button type="button" data-code-tab="curl" class="code-tab-btn px-3 py-1 rounded-lg font-medium text-slate-400 hover:text-slate-200">cURL 命令</button>
           <button type="button" data-code-tab="python" class="code-tab-btn px-3 py-1 rounded-lg font-medium text-slate-400 hover:text-slate-200">Python SDK 代码</button>
+          <button type="button" data-code-tab="voicedesign" class="code-tab-btn px-3 py-1 rounded-lg font-medium text-slate-400 hover:text-slate-200">Voice Design 代码</button>
         </div>
         <button id="btnCopyInspectorCode" type="button" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
           <i data-lucide="copy" class="w-3.5 h-3.5"></i>
@@ -686,6 +860,51 @@
     // ============================================================================
     // 2. Application State
     // ============================================================================
+    const VOICE_DESIGN_PRESETS = [
+      {
+        label: '🎬 磁性纪录片男中音',
+        displayName: 'Documentary_Baritone_CN',
+        gender: 'male',
+        lang: 'cmn-CN',
+        prompt: '一位35岁左右成熟稳重的纪录片男中音旁白，声音温暖醇厚略带磁性，普通话标准，语速从容沉稳，带有安静的探索感与敬畏感。'
+      },
+      {
+        label: '🌙 治愈系深夜女主播',
+        displayName: 'LateNight_Radio_Host',
+        gender: 'female',
+        lang: 'cmn-CN',
+        prompt: '一位28岁温柔知性的深夜情感电台女主播，嗓音轻柔细腻、略带微暖的气声，说话节奏舒缓放松，给人安心陪伴的感觉。'
+      },
+      {
+        label: '🕵️ 沧桑硬汉老侦探',
+        displayName: 'Noir_Detective_Voice',
+        gender: 'male',
+        lang: 'en-US',
+        prompt: 'A 50-year-old world-weary detective with a gravelly, low-pitched raspy voice, speaking with a calm, unhurried cadence and dry wit.'
+      },
+      {
+        label: '✨ 元气灵动动漫少女',
+        displayName: 'Lively_Anime_Girl',
+        gender: 'female',
+        lang: 'cmn-CN',
+        prompt: '一位18岁活力满满、声音清脆甜美的元气少女，音调偏高且富有弹性，咬字清晰灵动，带着自然的笑意与好奇心。'
+      },
+      {
+        label: '📚 慈祥睿智讲故事老爷爷',
+        displayName: 'Wise_Grandfather_Storyteller',
+        gender: 'male',
+        lang: 'cmn-CN',
+        prompt: '一位65岁慈祥温和的老爷爷，声音沧桑但饱满温暖，语速慢条斯理，像在壁炉旁给孩子们娓娓道来古老的传说。'
+      },
+      {
+        label: '💼 干练果断科技女高管',
+        displayName: 'Tech_Keynote_Executive',
+        gender: 'female',
+        lang: 'en-US',
+        prompt: 'A confident 40-year-old tech executive with a crisp, resonant mid-range female voice, articulate diction, and an engaging, authoritative keynote cadence.'
+      }
+    ];
+
     const state = {
       // Credentials
       credType: 'none', // 'service_account' | 'bearer' | 'apikey' | 'none'
@@ -702,20 +921,24 @@
       voiceSearch: '',
       favorites: new Set(['Aoede', 'Kore', 'Puck', 'Charon', 'Sulafat']),
       voicesList: [...GEMINI_VOICES],
+      designedVoices: [],
+      voiceDesignOpen: true,
 
       // Input & Mode
       inputMode: 'single', // 'single' | 'dialogue' | 'ssml'
       speaker1Voice: 'Aoede',
       speaker2Voice: 'Puck',
+      activeDialogueTurnIndex: 0,
       dialogueTurns: [
-        { speaker: 'R', text: '你好！今天我们来测试一下双人对话语音合成。' },
-        { speaker: 'S', text: '太棒了！通过设置语气 Prompt，我们的对话听起来就像真人播客一样自然。' }
+        { speaker: 'R', style: 'warm and curious podcast host', text: '你好！今天我们来测试一下双人对话语音合成。<short pause> 你发现了吗？现在的对话输入框可以根据台词内容自动放大增高了！' },
+        { speaker: 'S', style: 'enthusiastic and cheerful co-host', text: '<laugh> 太棒了！而且我们还可以随时插入 <gasp> 惊叹、<sigh> 叹气、<throat-clearing> 清嗓子等三十多种非语言声音标签，甚至用 Voice Design 设计专属角色音色！' }
       ],
 
-      // Inspector & History
+      // Inspector, Player & History
       activeCodeTab: 'json',
       activeCredTab: 'json',
       sampleIndex: 0,
+      currentPlayingHistoryId: null,
       history: []
     };
 
@@ -1110,21 +1333,30 @@
     function populateDialogueSpeakerSelects() {
       const s1 = document.getElementById('selectSpeaker1Voice');
       const s2 = document.getElementById('selectSpeaker2Voice');
+      const prev1 = s1.value || state.speaker1Voice;
+      const prev2 = s2.value || state.speaker2Voice;
       s1.innerHTML = '';
       s2.innerHTML = '';
-      GEMINI_VOICES.forEach((v) => {
+      state.voicesList.forEach((v) => {
         const opt1 = document.createElement('option');
         opt1.value = v.name;
-        opt1.textContent = `${v.name} (${v.zhDesc})`;
-        if (v.name === state.speaker1Voice) opt1.selected = true;
+        opt1.textContent = `${v.name} (${v.zhDesc || v.style || 'Custom'})`;
+        if (v.name === prev1) opt1.selected = true;
         s1.appendChild(opt1);
 
         const opt2 = document.createElement('option');
         opt2.value = v.name;
-        opt2.textContent = `${v.name} (${v.zhDesc})`;
-        if (v.name === state.speaker2Voice) opt2.selected = true;
+        opt2.textContent = `${v.name} (${v.zhDesc || v.style || 'Custom'})`;
+        if (v.name === prev2) opt2.selected = true;
         s2.appendChild(opt2);
       });
+    }
+
+    function autoResizeTextarea(ta) {
+      if (!ta) return;
+      ta.style.height = 'auto';
+      const targetHeight = Math.max(92, ta.scrollHeight + 4);
+      ta.style.height = `${targetHeight}px`;
     }
 
     function renderDialogueTurns() {
@@ -1132,19 +1364,28 @@
       list.innerHTML = '';
       state.dialogueTurns.forEach((turn, idx) => {
         const row = document.createElement('div');
-        row.className = 'flex items-start gap-2 bg-slate-950/90 border border-slate-800 rounded-xl p-2';
+        const isR = turn.speaker === 'R';
+        row.className = 'flex flex-col gap-2 bg-slate-950/90 border border-slate-800/90 hover:border-slate-700 rounded-xl p-3 transition-colors';
         row.innerHTML = `
-          <button type="button" data-toggle-speaker="${idx}" class="px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold shrink-0 transition-colors ${
-            turn.speaker === 'R'
-              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-              : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-          }" title="点击切换说话人 A / B">
-            ${turn.speaker === 'R' ? '说话人 A (R)' : '说话人 B (S)'}
-          </button>
-          <input type="text" data-turn-input="${idx}" value="${escapeHtml(turn.text)}" placeholder="输入该角色的台词..." class="flex-1 bg-transparent text-xs sm:text-sm text-slate-100 focus:outline-none py-1" />
-          <button type="button" data-remove-turn="${idx}" class="text-slate-500 hover:text-rose-400 p-1" title="删除此行">
-            &times;
-          </button>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <button type="button" data-toggle-speaker="${idx}" class="px-3 py-1 rounded-lg text-xs font-mono font-semibold shrink-0 transition-colors ${
+                isR
+                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30'
+                  : 'bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30'
+              }" title="点击切换说话人 A (R) / 说话人 B (S)">
+                ${isR ? '🎙️ 说话人 A (R)' : '🎧 说话人 B (S)'}
+              </button>
+              <span class="text-[11px] text-slate-500 font-mono">第 ${idx + 1} 轮</span>
+            </div>
+            <div class="flex items-center gap-2 flex-1 sm:max-w-[320px]">
+              <input type="text" data-turn-style="${idx}" value="${escapeHtml(turn.style || '')}" placeholder="本句独立语气 style (留空则使用全局语气 Prompt)" class="flex-1 rounded-lg bg-slate-900/90 border border-slate-800 focus:border-purple-500/60 px-2.5 py-1 text-xs text-purple-200 placeholder:text-slate-500 focus:outline-none" />
+              <button type="button" data-remove-turn="${idx}" class="text-slate-500 hover:text-rose-400 px-1.5 py-0.5 rounded hover:bg-rose-500/10 text-sm font-bold" title="删除此段对话">
+                &times;
+              </button>
+            </div>
+          </div>
+          <textarea data-turn-input="${idx}" rows="3" placeholder="在此输入该角色的台词，支持多行长文本自动增高，也可点击上方非语言标签插入 <laugh>、<sigh>、<short pause> 或 |mhm|..." class="w-full rounded-xl bg-slate-900/75 border border-slate-800/90 focus:border-blue-500/70 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 leading-relaxed focus:outline-none resize-y min-h-[92px] custom-scrollbar">${escapeHtml(turn.text)}</textarea>
         `;
         list.appendChild(row);
       });
@@ -1157,10 +1398,22 @@
         });
       });
 
-      list.querySelectorAll('[data-turn-input]').forEach((inp) => {
+      list.querySelectorAll('[data-turn-style]').forEach((inp) => {
         inp.addEventListener('input', () => {
-          const i = Number(inp.getAttribute('data-turn-input'));
-          state.dialogueTurns[i].text = inp.value;
+          const i = Number(inp.getAttribute('data-turn-style'));
+          state.dialogueTurns[i].style = inp.value;
+        });
+      });
+
+      list.querySelectorAll('[data-turn-input]').forEach((ta) => {
+        autoResizeTextarea(ta);
+        ta.addEventListener('focus', () => {
+          state.activeDialogueTurnIndex = Number(ta.getAttribute('data-turn-input'));
+        });
+        ta.addEventListener('input', () => {
+          const i = Number(ta.getAttribute('data-turn-input'));
+          state.dialogueTurns[i].text = ta.value;
+          autoResizeTextarea(ta);
           updateCharCounts();
         });
       });
@@ -1168,11 +1421,14 @@
       list.querySelectorAll('[data-remove-turn]').forEach((btn) => {
         btn.addEventListener('click', () => {
           if (state.dialogueTurns.length <= 1) {
-            showToast('至少保留一行对话', 'warning');
+            showToast('至少保留一段对话台词', 'warning');
             return;
           }
           const i = Number(btn.getAttribute('data-remove-turn'));
           state.dialogueTurns.splice(i, 1);
+          if (state.activeDialogueTurnIndex >= state.dialogueTurns.length) {
+            state.activeDialogueTurnIndex = Math.max(0, state.dialogueTurns.length - 1);
+          }
           renderDialogueTurns();
           updateCharCounts();
         });
@@ -1242,7 +1498,8 @@
         if (state.inputMode === 'dialogue') {
           state.dialogueTurns.forEach((t) => {
             const meta = { speaker: t.speaker };
-            if (promptText) meta.style = promptText;
+            const turnStyle = (t.style && t.style.trim()) || promptText;
+            if (turnStyle) meta.style = turnStyle;
             parts.push({
               text: normalizeGemini38Transcript(t.text),
               speech_metadata: meta
@@ -1453,6 +1710,28 @@
             `    out.write(response.audio_content)`
           ].join('\n');
         }
+      } else if (state.activeCodeTab === 'voicedesign') {
+        const vdPayload = buildVoiceDesignPayload();
+        const vdUrl = resolveVoicesApiUrl();
+        block.textContent = [
+          `# === 1. Voice Design REST API 请求 (POST ${vdUrl}) ===`,
+          JSON.stringify(vdPayload, null, 2),
+          ``,
+          `# === 2. Python Google Gen AI SDK 语音设计示例 ===`,
+          `from google import genai`,
+          `client = genai.Client(vertexai=True, project=${JSON.stringify(projectId)}, location="global")`,
+          `created_voice = client.voices.create(`,
+          `    store=True,`,
+          `    voice={`,
+          `        "type": "VOICE_TYPE_PROMPTED",`,
+          `        "prompted": {"input": ${JSON.stringify(vdPayload.voice.prompted.input)}},`,
+          `        "display_name": ${JSON.stringify(vdPayload.voice.display_name)},`,
+          `        "gender": ${JSON.stringify(vdPayload.voice.gender)},`,
+          `        "language_code": ${JSON.stringify(vdPayload.voice.language_code)}`,
+          `    }`,
+          `)`,
+          `print("Created Voice ID:", created_voice.id)`
+        ].join('\n');
       }
     }
 
@@ -1566,9 +1845,7 @@
           ? state.dialogueTurns.map((t) => `${t.speaker}: ${t.text}`).join(' / ')
           : document.getElementById('textareaText').value;
 
-        loadAudioIntoPlayer(objectUrl, `${voiceLabel}-${Date.now()}.${ext}`, `${voiceLabel} · ${modelLabel} (${elapsedMs}ms)`);
-
-        state.history.unshift({
+        const newHistoryItem = {
           id: Date.now(),
           voice: voiceLabel,
           model: modelLabel,
@@ -1578,7 +1855,9 @@
           ext: ext,
           time: new Date().toLocaleTimeString(),
           elapsedMs
-        });
+        };
+        state.history.unshift(newHistoryItem);
+        loadAudioIntoPlayer(objectUrl, `${voiceLabel}-${newHistoryItem.id}.${ext}`, `${voiceLabel} · ${modelLabel} (${elapsedMs}ms)`, newHistoryItem);
         renderHistoryList();
         showToast(`语音合成成功！耗时 ${elapsedMs}ms`, 'success');
       } catch (err) {
@@ -1642,6 +1921,7 @@
           }
         });
         renderVoicesGrid();
+        populateDialogueSpeakerSelects();
         showToast(`同步完成！新增 ${added} 个当前语言区域的云端音色`, 'success');
       } catch (err) {
         showToast(`同步云端音色失败: ${err.message}`, 'error');
@@ -1651,56 +1931,492 @@
     }
 
     // ============================================================================
-    // 9. Audio Player, Web Audio Visualizer & Browser Preview
+    // 8B. Voice Design (VOICE_TYPE_PROMPTED) API & PCM-to-WAV Conversion
     // ============================================================================
-    let audioCtx = null;
-    let analyser = null;
-    let sourceNode = null;
-    let animFrameId = null;
+    function resolveVoicesApiUrl(voiceId = '') {
+      const endpointSel = document.getElementById('selectEndpoint').value;
+      const projectId = (state.serviceAccount && state.serviceAccount.project_id) || state.manualProjectId || 'YOUR_PROJECT_ID';
+      if (endpointSel === 'https://generativelanguage.googleapis.com' || (state.credType === 'apikey' && !state.manualProjectId)) {
+        return `https://generativelanguage.googleapis.com/v1beta/voices${voiceId ? '/' + encodeURIComponent(voiceId) : ''}`;
+      }
+      const loc = (endpointSel === 'us' || endpointSel === 'eu') ? endpointSel : 'global';
+      const hostPrefix = (loc === 'us' || loc === 'eu') ? `${loc}-` : '';
+      return `https://${hostPrefix}aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/${loc}/voices${voiceId ? '/' + encodeURIComponent(voiceId) : ''}`;
+    }
 
-    function loadAudioIntoPlayer(url, filename, metaText) {
+    function buildVoiceDesignPayload() {
+      const displayName = document.getElementById('inputVoiceDesignName').value.trim() || 'Custom_Designed_Voice';
+      const gender = document.getElementById('selectVoiceDesignGender').value;
+      const langCode = document.getElementById('selectVoiceDesignLang').value;
+      const promptInput = document.getElementById('textareaVoiceDesignPrompt').value.trim();
+      return {
+        store: true,
+        voice: {
+          type: 'VOICE_TYPE_PROMPTED',
+          prompted: {
+            input: promptInput
+          },
+          display_name: displayName,
+          gender: gender,
+          language_code: langCode
+        }
+      };
+    }
+
+    function pcm16ToWavBlob(pcmBytes, sampleRate = 24000, numChannels = 1) {
+      // Check if bytes already start with "RIFF"
+      if (
+        pcmBytes.length > 12 &&
+        pcmBytes[0] === 0x52 &&
+        pcmBytes[1] === 0x49 &&
+        pcmBytes[2] === 0x46 &&
+        pcmBytes[3] === 0x46
+      ) {
+        return new Blob([pcmBytes], { type: 'audio/wav' });
+      }
+      const bitsPerSample = 16;
+      const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+      const blockAlign = (numChannels * bitsPerSample) / 8;
+      const dataSize = pcmBytes.byteLength;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+
+      function writeStr(offset, str) {
+        for (let i = 0; i < str.length; i++) {
+          view.setUint8(offset + i, str.charCodeAt(i));
+        }
+      }
+
+      writeStr(0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeStr(8, 'WAVE');
+      writeStr(12, 'fmt ');
+      view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+      view.setUint16(20, 1, true);  // AudioFormat (1 = PCM)
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, byteRate, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitsPerSample, true);
+      writeStr(36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      new Uint8Array(buffer, 44).set(pcmBytes);
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    function registerDesignedVoiceInState(voiceObj, selectImmediately = true) {
+      if (!voiceObj || !voiceObj.id) return;
+      const existingIdx = state.designedVoices.findIndex((v) => v.id === voiceObj.id);
+      if (existingIdx >= 0) {
+        state.designedVoices[existingIdx] = { ...state.designedVoices[existingIdx], ...voiceObj };
+      } else {
+        state.designedVoices.unshift(voiceObj);
+      }
+
+      try {
+        localStorage.setItem('gcp_tts_designed_voices', JSON.stringify(state.designedVoices));
+      } catch (e) {}
+
+      // Also add to main voicesList so it appears in the Voice Grid & Multi-speaker selects
+      const genderUpper = String(voiceObj.gender || 'FEMALE').toUpperCase() === 'MALE' ? 'MALE' : 'FEMALE';
+      const gridEntry = {
+        name: voiceObj.id,
+        gender: genderUpper,
+        style: 'Prompted',
+        zhDesc: `${voiceObj.display_name || '设计音色'} · ${voiceObj.description || ''}`.slice(0, 36),
+        tag: '✨ 语音设计'
+      };
+      const listIdx = state.voicesList.findIndex((v) => v.name === voiceObj.id);
+      if (listIdx >= 0) {
+        state.voicesList[listIdx] = gridEntry;
+      } else {
+        state.voicesList.unshift(gridEntry);
+      }
+      state.favorites.add(voiceObj.id);
+
+      if (selectImmediately) {
+        state.selectedVoice = voiceObj.id;
+        state.customVoiceName = '';
+        document.getElementById('inputCustomVoiceName').value = '';
+        updateSelectedVoiceBanner();
+      }
+
+      renderVoicesGrid();
+      populateDialogueSpeakerSelects();
+      renderDesignedVoicesList();
+    }
+
+    function renderVoiceDesignPresets() {
+      const container = document.getElementById('voiceDesignPresets');
+      if (!container) return;
+      container.innerHTML = '';
+      VOICE_DESIGN_PRESETS.forEach((p) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'px-2 py-0.5 rounded text-[11px] bg-slate-900 hover:bg-purple-500/20 text-slate-300 hover:text-purple-200 border border-slate-800 hover:border-purple-500/40 transition-colors';
+        btn.textContent = p.label;
+        btn.addEventListener('click', () => {
+          document.getElementById('inputVoiceDesignName').value = p.displayName;
+          document.getElementById('selectVoiceDesignGender').value = p.gender;
+          document.getElementById('selectVoiceDesignLang').value = p.lang;
+          document.getElementById('textareaVoiceDesignPrompt').value = p.prompt;
+          showToast(`已填入「${p.label}」语音设计描述`, 'info');
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function renderDesignedVoicesList() {
+      const container = document.getElementById('designedVoicesListContainer');
+      if (!container) return;
+      if (state.designedVoices.length === 0) {
+        container.innerHTML = `<div class="text-[11px] text-slate-500 py-1.5 text-center">暂无已保存的设计音色。点击上方「生成并保存设计音色」或手动添加 <code class="font-mono">voice_...</code> ID。</div>`;
+        return;
+      }
+      container.innerHTML = '';
+      state.designedVoices.forEach((dv) => {
+        const isCurrent = (state.customVoiceName || state.selectedVoice) === dv.id;
+        const item = document.createElement('div');
+        item.className = `flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border text-xs transition-colors ${
+          isCurrent
+            ? 'bg-purple-600/20 border-purple-500/50 text-purple-100'
+            : 'bg-slate-950/80 border-slate-800 text-slate-300'
+        }`;
+        item.innerHTML = `
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5">
+              <span class="font-mono text-[11px] font-semibold text-purple-300 truncate">${escapeHtml(dv.id)}</span>
+              <span class="text-[11px] text-slate-300 truncate">${escapeHtml(dv.display_name || '')}</span>
+            </div>
+            <p class="text-[10px] text-slate-500 truncate">${escapeHtml(dv.description || '')}</p>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button type="button" data-use-designed="${escapeHtml(dv.id)}" class="px-2 py-0.5 rounded text-[11px] font-medium bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30">
+              ${isCurrent ? '已选用' : '选用'}
+            </button>
+            <button type="button" data-del-designed="${escapeHtml(dv.id)}" class="px-1.5 py-0.5 rounded text-[11px] text-slate-500 hover:text-rose-400" title="从列表或云端删除该设计音色">
+              &times;
+            </button>
+          </div>
+        `;
+        item.querySelector('[data-use-designed]').addEventListener('click', () => {
+          state.selectedVoice = dv.id;
+          state.customVoiceName = '';
+          document.getElementById('inputCustomVoiceName').value = '';
+          updateSelectedVoiceBanner();
+          renderVoicesGrid();
+          renderDesignedVoicesList();
+          showToast(`已切换当前合成音色为设计音色: ${dv.id}`, 'success');
+        });
+        item.querySelector('[data-del-designed]').addEventListener('click', () => {
+          handleDeleteDesignedVoice(dv.id);
+        });
+        container.appendChild(item);
+      });
+    }
+
+    async function handleCreateDesignedVoice() {
+      const promptInput = document.getElementById('textareaVoiceDesignPrompt').value.trim();
+      if (!promptInput) {
+        showToast('请输入音色永久特征的自然语言描述 (voice.prompted.input)', 'warning');
+        return;
+      }
+      if (state.credType === 'none') {
+        showToast('请先导入 Google Cloud 服务账号 JSON 密钥或配置 API 凭据', 'warning');
+        document.getElementById('credentialModal').classList.remove('hidden');
+        document.getElementById('credentialModal').classList.add('flex');
+        return;
+      }
+
+      const btn = document.getElementById('btnCreateDesignedVoice');
+      const label = document.getElementById('btnCreateDesignedVoiceLabel');
+      btn.disabled = true;
+      btn.classList.add('opacity-70');
+      label.textContent = '正在设计音色并生成样本 (约需数秒)...';
+
+      try {
+        let url = resolveVoicesApiUrl();
+        const payload = buildVoiceDesignPayload();
+        const headers = { 'Content-Type': 'application/json; charset=utf-8' };
+
+        if (state.credType === 'apikey') {
+          url += `${url.includes('?') ? '&' : '?'}key=${encodeURIComponent(state.apiKey)}`;
+        } else {
+          const token = await ensureValidAccessToken();
+          headers['Authorization'] = `Bearer ${token}`;
+          const projId = (state.serviceAccount && state.serviceAccount.project_id) || state.manualProjectId;
+          if (projId) headers['x-goog-user-project'] = projId;
+        }
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error((data.error && data.error.message) || '创建设计音色失败');
+        }
+
+        const voiceId = data.id || (data.voice && data.voice.id) || data.name;
+        if (!voiceId) {
+          throw new Error('响应中未找到生成的音色 ID (id)');
+        }
+
+        const sampleObj = data.sample_audio || data.sampleAudio;
+        if (sampleObj && sampleObj.data) {
+          const bin = atob(sampleObj.data);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const wavBlob = pcm16ToWavBlob(bytes, 24000, 1);
+          const sampleUrl = URL.createObjectURL(wavBlob);
+
+          const sampleWrap = document.getElementById('voiceDesignSampleContainer');
+          const sampleAudio = document.getElementById('voiceDesignSampleAudio');
+          const sampleTitle = document.getElementById('voiceDesignSampleTitle');
+          const usageBadge = document.getElementById('voiceDesignUsageBadge');
+
+          sampleWrap.classList.remove('hidden');
+          sampleTitle.textContent = `设计音色样本 (${voiceId})`;
+          if (data.usage) {
+            usageBadge.textContent = `Tokens: in=${data.usage.input_tokens || data.usage.promptTokenCount || '-'} / out=${data.usage.output_tokens || data.usage.candidatesTokenCount || '-'}`;
+          }
+          sampleAudio.src = sampleUrl;
+          sampleAudio.play().catch(() => {});
+        }
+
+        registerDesignedVoiceInState({
+          id: voiceId,
+          display_name: payload.voice.display_name,
+          gender: payload.voice.gender,
+          language_code: payload.voice.language_code,
+          description: promptInput
+        }, true);
+
+        showToast(`语音设计成功！已生成并自动选用 ${voiceId}`, 'success');
+      } catch (err) {
+        showToast(`语音设计失败: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-70');
+        label.textContent = '生成并保存设计音色 (store: true)';
+      }
+    }
+
+    async function handleFetchStoredVoices() {
+      if (state.credType === 'none') {
+        showToast('请先导入 Google Cloud 服务账号 JSON 密钥后再拉取已保存的设计音色', 'warning');
+        document.getElementById('credentialModal').classList.remove('hidden');
+        document.getElementById('credentialModal').classList.add('flex');
+        return;
+      }
+      const btn = document.getElementById('btnFetchStoredVoices');
+      btn.disabled = true;
+      try {
+        let url = `${resolveVoicesApiUrl()}?type=prompted`;
+        const headers = {};
+        if (state.credType === 'apikey') {
+          url += `&key=${encodeURIComponent(state.apiKey)}`;
+        } else {
+          const token = await ensureValidAccessToken();
+          headers['Authorization'] = `Bearer ${token}`;
+          const projId = (state.serviceAccount && state.serviceAccount.project_id) || state.manualProjectId;
+          if (projId) headers['x-goog-user-project'] = projId;
+        }
+
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error((data.error && data.error.message) || '拉取已保存的设计音色失败');
+        }
+        const voicesArr = data.voices || [];
+        let count = 0;
+        voicesArr.forEach((v) => {
+          if (v.id && v.type !== 'prebuilt') {
+            registerDesignedVoiceInState({
+              id: v.id,
+              display_name: v.display_name || v.displayName || v.id,
+              gender: v.gender || 'female',
+              language_code: v.language_code || v.languageCode || 'cmn-CN',
+              description: (v.prompted && v.prompted.input) || v.description || '云端存储自定义音色'
+            }, false);
+            count++;
+          }
+        });
+        showToast(`已从云端同步 ${count} 个自定义设计音色`, 'success');
+      } catch (err) {
+        showToast(`拉取设计音色失败: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function handleDeleteDesignedVoice(voiceId) {
+      state.designedVoices = state.designedVoices.filter((v) => v.id !== voiceId);
+      try {
+        localStorage.setItem('gcp_tts_designed_voices', JSON.stringify(state.designedVoices));
+      } catch (e) {}
+      renderDesignedVoicesList();
+
+      if (state.credType !== 'none') {
+        try {
+          let url = resolveVoicesApiUrl(voiceId);
+          const headers = {};
+          if (state.credType === 'apikey') {
+            url += `?key=${encodeURIComponent(state.apiKey)}`;
+          } else {
+            const token = await ensureValidAccessToken();
+            headers['Authorization'] = `Bearer ${token}`;
+            const projId = (state.serviceAccount && state.serviceAccount.project_id) || state.manualProjectId;
+            if (projId) headers['x-goog-user-project'] = projId;
+          }
+          await fetch(url, { method: 'DELETE', headers });
+          showToast(`已删除设计音色 ${voiceId}`, 'info');
+        } catch (e) {
+          showToast(`已从本地列表移除 ${voiceId}`, 'info');
+        }
+      } else {
+        showToast(`已从本地列表移除 ${voiceId}`, 'info');
+      }
+    }
+
+    // ============================================================================
+    // 9. iOS Background-Safe Audio Player, Non-Hijacking Waveform Visualizer & MediaSession
+    // ============================================================================
+    let animFrameId = null;
+    let decodedWaveformPeaks = null;
+    let keepAliveAudioEl = null;
+
+    // Decode audio blob offline for waveform visualization WITHOUT calling createMediaElementSource(audioEl).
+    // This guarantees <audio id="audioElement"> stays on iOS Safari's native hardware media pipeline
+    // so locking the screen or switching apps in iOS NEVER suspends or mutes audio playback.
+    async function decodeAudioForWaveform(url) {
+      try {
+        const res = await fetch(url);
+        const arrayBuf = await res.arrayBuffer();
+        const AudioContextClass = window.OfflineAudioContext || window.webkitOfflineAudioContext || window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await tempCtx.decodeAudioData(arrayBuf.slice(0));
+        const rawData = audioBuffer.getChannelData(0);
+        const buckets = 256;
+        const blockSize = Math.max(1, Math.floor(rawData.length / buckets));
+        const peaks = new Float32Array(buckets);
+        for (let i = 0; i < buckets; i++) {
+          let sum = 0;
+          const start = i * blockSize;
+          for (let j = 0; j < blockSize && start + j < rawData.length; j++) {
+            sum += Math.abs(rawData[start + j]);
+          }
+          peaks[i] = Math.min(1, (sum / blockSize) * 3.2);
+        }
+        decodedWaveformPeaks = peaks;
+        if (tempCtx.close) tempCtx.close().catch(() => {});
+      } catch (e) {
+        decodedWaveformPeaks = null;
+      }
+    }
+
+    function updateIosMediaSession(metaText, historyItem = null) {
+      if (!('mediaSession' in navigator)) return;
+      try {
+        const voiceName = (historyItem && historyItem.voice) || (state.customVoiceName || state.selectedVoice);
+        const promptDesc = (historyItem && historyItem.prompt) || document.getElementById('textareaPrompt').value.trim() || 'Gemini TTS';
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: metaText || `Gemini TTS · ${voiceName}`,
+          artist: `Google Cloud TTS (${voiceName})`,
+          album: promptDesc.slice(0, 60)
+        });
+
+        const audioEl = document.getElementById('audioElement');
+        navigator.mediaSession.setActionHandler('play', () => {
+          audioEl.play().catch(() => {});
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          audioEl.pause();
+        });
+        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+          const offset = details.seekOffset || 10;
+          audioEl.currentTime = Math.max(0, audioEl.currentTime - offset);
+        });
+        navigator.mediaSession.setActionHandler('seekforward', (details) => {
+          const offset = details.seekOffset || 10;
+          audioEl.currentTime = Math.min(audioEl.duration || 0, audioEl.currentTime + offset);
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+          playAdjacentHistoryItem(-1);
+        });
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+          playAdjacentHistoryItem(1);
+        });
+      } catch (e) {}
+    }
+
+    function playAdjacentHistoryItem(direction = 1) {
+      if (state.history.length === 0) return false;
+      const curIdx = state.history.findIndex((h) => h.id === state.currentPlayingHistoryId);
+      let nextIdx = curIdx + direction;
+      if (curIdx === -1) nextIdx = 0;
+      if (nextIdx < 0 || nextIdx >= state.history.length) return false;
+      const item = state.history[nextIdx];
+      state.currentPlayingHistoryId = item.id;
+      loadAudioIntoPlayer(item.url, `tts-${item.voice}-${item.id}.${item.ext}`, `${item.voice} · ${item.model}`, item);
+      return true;
+    }
+
+    function ensureIosKeepAliveBridge() {
+      const chk = document.getElementById('chkIosBgKeepAlive');
+      if (!chk || !chk.checked) {
+        if (keepAliveAudioEl) {
+          keepAliveAudioEl.pause();
+        }
+        return;
+      }
+      if (!keepAliveAudioEl) {
+        // Generate a tiny 1-second near-silent WAV (sampleRate 8000Hz) to keep iOS audio session active between tracks
+        const silentPcm = new Uint8Array(16000);
+        const wavBlob = pcm16ToWavBlob(silentPcm, 8000, 1);
+        keepAliveAudioEl = new Audio(URL.createObjectURL(wavBlob));
+        keepAliveAudioEl.loop = true;
+        keepAliveAudioEl.volume = 0.01;
+        keepAliveAudioEl.setAttribute('playsinline', '');
+        keepAliveAudioEl.setAttribute('webkit-playsinline', '');
+      }
+      keepAliveAudioEl.play().catch(() => {});
+    }
+
+    function loadAudioIntoPlayer(url, filename, metaText, historyItem = null) {
       const audioEl = document.getElementById('audioElement');
       const dlBtn = document.getElementById('btnDownloadAudio');
       const metaEl = document.getElementById('currentAudioMeta');
       const placeholder = document.getElementById('waveformPlaceholder');
 
       placeholder.classList.add('hidden');
+      audioEl.loop = Boolean(document.getElementById('chkLoopAudio') && document.getElementById('chkLoopAudio').checked);
       audioEl.src = url;
       dlBtn.href = url;
       dlBtn.download = filename;
       dlBtn.classList.remove('pointer-events-none', 'opacity-40');
       metaEl.textContent = `当前播放: ${metaText}`;
 
-      setupAudioVisualizer(audioEl);
-      audioEl.play().catch(() => {});
-    }
-
-    function setupAudioVisualizer(audioEl) {
-      try {
-        if (!audioCtx) {
-          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-          audioCtx = new AudioContextClass();
-          analyser = audioCtx.createAnalyser();
-          analyser.fftSize = 128;
-          sourceNode = audioCtx.createMediaElementSource(audioEl);
-          sourceNode.connect(analyser);
-          analyser.connect(audioCtx.destination);
-        }
-        if (audioCtx.state === 'suspended') {
-          audioCtx.resume();
-        }
-        drawWaveform();
-      } catch (e) {
-        // Fallback if Web Audio API is restricted
+      if (historyItem && historyItem.id) {
+        state.currentPlayingHistoryId = historyItem.id;
       }
+
+      decodeAudioForWaveform(url);
+      drawWaveform();
+      updateIosMediaSession(metaText, historyItem);
+      ensureIosKeepAliveBridge();
+      audioEl.play().catch(() => {});
     }
 
     function drawWaveform() {
       if (animFrameId) cancelAnimationFrame(animFrameId);
       const canvas = document.getElementById('waveformCanvas');
       const ctx = canvas.getContext('2d');
-      const bufferLength = analyser ? analyser.frequencyBinCount : 64;
-      const dataArray = new Uint8Array(bufferLength);
+      const audioEl = document.getElementById('audioElement');
+      const barCount = 48;
 
       function renderFrame() {
         animFrameId = requestAnimationFrame(renderFrame);
@@ -1708,24 +2424,44 @@
         const height = (canvas.height = canvas.clientHeight || 80);
         ctx.clearRect(0, 0, width, height);
 
-        if (analyser) {
-          analyser.getByteFrequencyData(dataArray);
-        }
+        const isPlaying = audioEl && !audioEl.paused && !audioEl.ended;
+        const progress = (audioEl && audioEl.duration) ? (audioEl.currentTime / audioEl.duration) : 0;
+        const centerBucket = decodedWaveformPeaks
+          ? Math.floor(progress * (decodedWaveformPeaks.length - 1))
+          : 0;
 
-        const barWidth = (width / bufferLength) * 1.6;
-        let x = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          const val = dataArray[i] || 4;
-          const barHeight = Math.max(4, (val / 255) * (height - 10));
+        const barWidth = (width / barCount);
+        const nowSec = performance.now() / 1000;
+
+        for (let i = 0; i < barCount; i++) {
+          let norm = 0.08;
+          if (isPlaying) {
+            if (decodedWaveformPeaks && decodedWaveformPeaks.length > 0) {
+              const idx = Math.min(
+                decodedWaveformPeaks.length - 1,
+                Math.max(0, centerBucket + Math.floor((i - barCount / 2) * 0.5))
+              );
+              const waveMod = 0.75 + 0.25 * Math.sin(nowSec * 10 + i * 0.45);
+              norm = Math.max(0.08, Math.min(0.95, decodedWaveformPeaks[idx] * waveMod));
+            } else {
+              norm = 0.15 + 0.55 * Math.abs(Math.sin(nowSec * 6 + i * 0.35)) * Math.sin((i / barCount) * Math.PI);
+            }
+          } else if (decodedWaveformPeaks && decodedWaveformPeaks.length > 0) {
+            const idx = Math.floor((i / barCount) * (decodedWaveformPeaks.length - 1));
+            norm = Math.max(0.06, decodedWaveformPeaks[idx] * 0.45);
+          }
+
+          const barHeight = Math.max(4, norm * (height - 10));
           const y = (height - barHeight) / 2;
+          const x = i * barWidth;
 
           const grad = ctx.createLinearGradient(0, y, 0, y + barHeight);
-          grad.addColorStop(0, '#60a5fa');
-          grad.addColorStop(0.5, '#818cf8');
-          grad.addColorStop(1, '#38bdf8');
+          const isPast = (i / barCount) <= progress;
+          grad.addColorStop(0, isPast ? '#60a5fa' : '#475569');
+          grad.addColorStop(0.5, isPast ? '#818cf8' : '#64748b');
+          grad.addColorStop(1, isPast ? '#38bdf8' : '#475569');
           ctx.fillStyle = grad;
-          ctx.fillRect(x, y, Math.max(2, barWidth - 2), barHeight);
-          x += barWidth;
+          ctx.fillRect(x + 1, y, Math.max(2, barWidth - 3), barHeight);
         }
       }
       renderFrame();
@@ -2064,16 +2800,50 @@
         renderDialogueTurns();
       });
 
-      // Inline Expressive Tag Insertion
+      // Vocal Bursts Category Filter
+      document.querySelectorAll('.burst-cat-btn').forEach((catBtn) => {
+        catBtn.addEventListener('click', () => {
+          const cat = catBtn.getAttribute('data-burst-cat');
+          document.querySelectorAll('.burst-cat-btn').forEach((b) => {
+            b.className = b === catBtn
+              ? 'burst-cat-btn px-2 py-0.5 rounded text-[11px] font-medium bg-purple-600 text-white transition-colors'
+              : 'burst-cat-btn px-2 py-0.5 rounded text-[11px] font-medium bg-slate-900 text-slate-400 hover:text-slate-200 transition-colors';
+          });
+          document.querySelectorAll('#vocalBurstsTagsContainer .tag-insert-btn').forEach((tagBtn) => {
+            const grp = tagBtn.getAttribute('data-burst-group');
+            tagBtn.classList.toggle('hidden', cat !== 'all' && grp !== cat);
+          });
+        });
+      });
+
+      // Inline Expressive & Non-Speech Vocal Burst Tag Insertion (supports cursor position in both Single & Multi-Speaker Dialogue)
       document.querySelectorAll('.tag-insert-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const tag = btn.getAttribute('data-insert-tag');
-          const ta = document.getElementById('textareaText');
           if (state.inputMode === 'dialogue') {
-            state.dialogueTurns[state.dialogueTurns.length - 1].text += ` ${tag}`;
-            renderDialogueTurns();
+            const targetIdx = Math.min(
+              Math.max(0, state.activeDialogueTurnIndex || 0),
+              state.dialogueTurns.length - 1
+            );
+            const turnTa = document.querySelector(`[data-turn-input="${targetIdx}"]`);
+            if (turnTa) {
+              const start = turnTa.selectionStart ?? turnTa.value.length;
+              const end = turnTa.selectionEnd ?? turnTa.value.length;
+              const val = turnTa.value;
+              turnTa.value = val.slice(0, start) + tag + val.slice(end);
+              state.dialogueTurns[targetIdx].text = turnTa.value;
+              autoResizeTextarea(turnTa);
+              turnTa.focus();
+              turnTa.selectionStart = turnTa.selectionEnd = start + tag.length;
+              updateCharCounts();
+            } else {
+              state.dialogueTurns[targetIdx].text += ` ${tag}`;
+              renderDialogueTurns();
+              updateCharCounts();
+            }
             return;
           }
+          const ta = document.getElementById('textareaText');
           const start = ta.selectionStart || 0;
           const end = ta.selectionEnd || 0;
           const val = ta.value;
@@ -2116,6 +2886,106 @@
       document.getElementById('rangePitch').addEventListener('input', (e) => {
         const v = parseFloat(e.target.value);
         document.getElementById('labelPitchVal').textContent = `${v > 0 ? '+' : ''}${v.toFixed(1)} st`;
+      });
+
+      // Voice Design Studio Initialization & Listeners
+      renderVoiceDesignPresets();
+      try {
+        const savedDesigned = localStorage.getItem('gcp_tts_designed_voices');
+        if (savedDesigned) {
+          const parsedList = JSON.parse(savedDesigned);
+          if (Array.isArray(parsedList)) {
+            parsedList.forEach((dv) => registerDesignedVoiceInState(dv, false));
+          }
+        }
+      } catch (e) {}
+      renderDesignedVoicesList();
+
+      document.getElementById('btnToggleVoiceDesign').addEventListener('click', () => {
+        const panel = document.getElementById('voiceDesignPanel');
+        panel.classList.toggle('hidden');
+      });
+      document.getElementById('btnCreateDesignedVoice').addEventListener('click', handleCreateDesignedVoice);
+      document.getElementById('btnFetchStoredVoices').addEventListener('click', handleFetchStoredVoices);
+      document.getElementById('btnSaveManualVoiceId').addEventListener('click', () => {
+        const manualId = document.getElementById('inputManualVoiceId').value.trim();
+        if (!manualId) {
+          showToast('请输入有效的 voice_... 或自定义音色 ID', 'warning');
+          return;
+        }
+        registerDesignedVoiceInState({
+          id: manualId,
+          display_name: document.getElementById('inputVoiceDesignName').value.trim() || '手动添加设计音色',
+          gender: document.getElementById('selectVoiceDesignGender').value,
+          language_code: document.getElementById('selectVoiceDesignLang').value,
+          description: document.getElementById('textareaVoiceDesignPrompt').value.trim() || '手动绑定 voice ID'
+        }, true);
+        document.getElementById('inputManualVoiceId').value = '';
+        showToast(`已添加并选用设计音色: ${manualId}`, 'success');
+      });
+
+      // iOS Background Audio Continuous Playback & MediaSession Lifecycle
+      const audioEl = document.getElementById('audioElement');
+      document.getElementById('chkLoopAudio').addEventListener('change', (e) => {
+        audioEl.loop = e.target.checked;
+      });
+      document.getElementById('chkIosBgKeepAlive').addEventListener('change', () => {
+        ensureIosKeepAliveBridge();
+      });
+
+      audioEl.addEventListener('play', () => {
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = 'playing';
+        }
+        ensureIosKeepAliveBridge();
+      });
+
+      audioEl.addEventListener('pause', () => {
+        if ('mediaSession' in navigator && !audioEl.ended) {
+          navigator.mediaSession.playbackState = 'paused';
+        }
+      });
+
+      audioEl.addEventListener('timeupdate', () => {
+        if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && audioEl.duration && isFinite(audioEl.duration)) {
+          try {
+            navigator.mediaSession.setPositionState({
+              duration: audioEl.duration,
+              playbackRate: audioEl.playbackRate || 1.0,
+              position: Math.min(audioEl.duration, audioEl.currentTime)
+            });
+          } catch (e) {}
+        }
+      });
+
+      audioEl.addEventListener('ended', () => {
+        const loopOn = document.getElementById('chkLoopAudio').checked;
+        const autoNextOn = document.getElementById('chkAutoNextHistory').checked;
+        if (loopOn) {
+          audioEl.currentTime = 0;
+          audioEl.play().catch(() => {});
+          return;
+        }
+        if (autoNextOn && state.history.length > 1) {
+          const moved = playAdjacentHistoryItem(1);
+          if (!moved && state.history.length > 0) {
+            // Wrap around to the first item if at the end of history queue
+            const first = state.history[0];
+            state.currentPlayingHistoryId = first.id;
+            loadAudioIntoPlayer(first.url, `tts-${first.voice}-${first.id}.${first.ext}`, `${first.voice} · ${first.model}`, first);
+          }
+        }
+      });
+
+      // Re-auto-resize dialogue textareas when switching to dialogue tab
+      document.querySelectorAll('.input-mode-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (btn.getAttribute('data-input-mode') === 'dialogue') {
+            setTimeout(() => {
+              document.querySelectorAll('[data-turn-input]').forEach((ta) => autoResizeTextarea(ta));
+            }, 0);
+          }
+        });
       });
 
       // Action Buttons
